@@ -1,0 +1,10 @@
+C:\Users\User\source\repos\RightClickMoveMode\Game1Patch\bin\Debug\Game1Patch.dll
+C:\Users\User\source\repos\RightClickMoveMode\Game1Patch\bin\Debug\Game1Patch.pdb
+C:\Users\User\source\repos\RightClickMoveMode\Game1Patch\bin\Debug\0Harmony.dll
+C:\Users\User\source\repos\RightClickMoveMode\Game1Patch\bin\Debug\RightClickMoveMode.dll
+C:\Users\User\source\repos\RightClickMoveMode\Game1Patch\bin\Debug\RightClickMoveMode.pdb
+C:\Users\User\source\repos\RightClickMoveMode\Game1Patch\obj\Debug\Game1Patch.csprojAssemblyReference.cache
+C:\Users\User\source\repos\RightClickMoveMode\Game1Patch\obj\Debug\Game1Patch.csproj.CoreCompileInputs.cache
+C:\Users\User\source\repos\RightClickMoveMode\Game1Patch\obj\Debug\Game1Patch.csproj.CopyComplete
+C:\Users\User\source\repos\RightClickMoveMode\Game1Patch\obj\Debug\Game1Patch.dll
+C:\Users\User\source\repos\RightClickMoveMode\Game1Patch\obj\Debug\Game1Patch.pdb

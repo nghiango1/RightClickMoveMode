@@ -1,0 +1,231 @@
+{
+  "version": 3,
+  "targets": {
+    ".NETFramework,Version=v4.5.2": {
+      "Lib.Harmony/1.2.0": {
+        "type": "package",
+        "compile": {
+          "lib/net45/0Harmony.dll": {}
+        },
+        "runtime": {
+          "lib/net45/0Harmony.dll": {}
+        }
+      },
+      "Pathoschild.Stardew.ModBuildConfig/2.1.0": {
+        "type": "package",
+        "build": {
+          "build/Pathoschild.Stardew.ModBuildConfig.targets": {}
+        }
+      },
+      "RightClickMoveMode/1.0.0": {
+        "type": "project",
+        "framework": ".NETFramework,Version=v4.5.2",
+        "dependencies": {
+          "Lib.Harmony": "1.2.0",
+          "Pathoschild.Stardew.ModBuildConfig": "2.1.0"
+        },
+        "compile": {
+          "bin/placeholder/RightClickMoveMode.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/RightClickMoveMode.dll": {}
+        }
+      }
+    },
+    ".NETFramework,Version=v4.5.2/win": {
+      "Lib.Harmony/1.2.0": {
+        "type": "package",
+        "compile": {
+          "lib/net45/0Harmony.dll": {}
+        },
+        "runtime": {
+          "lib/net45/0Harmony.dll": {}
+        }
+      },
+      "Pathoschild.Stardew.ModBuildConfig/2.1.0": {
+        "type": "package",
+        "build": {
+          "build/Pathoschild.Stardew.ModBuildConfig.targets": {}
+        }
+      },
+      "RightClickMoveMode/1.0.0": {
+        "type": "project",
+        "framework": ".NETFramework,Version=v4.5.2",
+        "dependencies": {
+          "Lib.Harmony": "1.2.0",
+          "Pathoschild.Stardew.ModBuildConfig": "2.1.0"
+        },
+        "compile": {
+          "bin/placeholder/RightClickMoveMode.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/RightClickMoveMode.dll": {}
+        }
+      }
+    },
+    ".NETFramework,Version=v4.5.2/win-x64": {
+      "Lib.Harmony/1.2.0": {
+        "type": "package",
+        "compile": {
+          "lib/net45/0Harmony.dll": {}
+        },
+        "runtime": {
+          "lib/net45/0Harmony.dll": {}
+        }
+      },
+      "Pathoschild.Stardew.ModBuildConfig/2.1.0": {
+        "type": "package",
+        "build": {
+          "build/Pathoschild.Stardew.ModBuildConfig.targets": {}
+        }
+      },
+      "RightClickMoveMode/1.0.0": {
+        "type": "project",
+        "framework": ".NETFramework,Version=v4.5.2",
+        "dependencies": {
+          "Lib.Harmony": "1.2.0",
+          "Pathoschild.Stardew.ModBuildConfig": "2.1.0"
+        },
+        "compile": {
+          "bin/placeholder/RightClickMoveMode.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/RightClickMoveMode.dll": {}
+        }
+      }
+    },
+    ".NETFramework,Version=v4.5.2/win-x86": {
+      "Lib.Harmony/1.2.0": {
+        "type": "package",
+        "compile": {
+          "lib/net45/0Harmony.dll": {}
+        },
+        "runtime": {
+          "lib/net45/0Harmony.dll": {}
+        }
+      },
+      "Pathoschild.Stardew.ModBuildConfig/2.1.0": {
+        "type": "package",
+        "build": {
+          "build/Pathoschild.Stardew.ModBuildConfig.targets": {}
+        }
+      },
+      "RightClickMoveMode/1.0.0": {
+        "type": "project",
+        "framework": ".NETFramework,Version=v4.5.2",
+        "dependencies": {
+          "Lib.Harmony": "1.2.0",
+          "Pathoschild.Stardew.ModBuildConfig": "2.1.0"
+        },
+        "compile": {
+          "bin/placeholder/RightClickMoveMode.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/RightClickMoveMode.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "Lib.Harmony/1.2.0": {
+      "sha512": "svkV2uTluECQ3eSuys3fnlMH3/RrZhSJF+qEBwZxwfnztvMZcdKnX9weiRGraLE79cQ9WWrBD517Z6QU6C8L+A==",
+      "type": "package",
+      "path": "lib.harmony/1.2.0",
+      "files": [
+        "lib.harmony.1.2.0.nupkg.sha512",
+        "lib.harmony.nuspec",
+        "lib/net35/0Harmony.dll",
+        "lib/net45/0Harmony.dll",
+        "lib/net472/0Harmony.dll"
+      ]
+    },
+    "Pathoschild.Stardew.ModBuildConfig/2.1.0": {
+      "sha512": "xyslXTFh+alHuYfRINEcuEd5tVbE0/2LY7sqwIf9m3//C359OKSpGiMied6qkOA1HjPH09o77F9nNihmL+c4oA==",
+      "type": "package",
+      "path": "pathoschild.stardew.modbuildconfig/2.1.0",
+      "files": [
+        "analyzers/dotnet/cs/StardewModdingAPI.ModBuildConfig.Analyzer.dll",
+        "build/Pathoschild.Stardew.ModBuildConfig.targets",
+        "build/StardewModdingAPI.ModBuildConfig.dll",
+        "build/StardewModdingAPI.Toolkit.CoreInterfaces.dll",
+        "build/StardewModdingAPI.Toolkit.dll",
+        "pathoschild.stardew.modbuildconfig.2.1.0.nupkg.sha512",
+        "pathoschild.stardew.modbuildconfig.nuspec",
+        "tools/install.ps1",
+        "tools/uninstall.ps1"
+      ]
+    },
+    "RightClickMoveMode/1.0.0": {
+      "type": "project",
+      "path": "../RightClickMoveMode/RightClickMoveMode.csproj",
+      "msbuildProject": "../RightClickMoveMode/RightClickMoveMode.csproj"
+    }
+  },
+  "projectFileDependencyGroups": {
+    ".NETFramework,Version=v4.5.2": [
+      "Lib.Harmony >= 1.2.0",
+      "Pathoschild.Stardew.ModBuildConfig >= 2.1.0",
+      "RightClickMoveMode >= 1.0.0"
+    ]
+  },
+  "packageFolders": {
+    "C:\\Users\\User\\.nuget\\packages\\": {}
+  },
+  "project": {
+    "version": "1.0.0",
+    "restore": {
+      "projectUniqueName": "C:\\Users\\User\\source\\repos\\RightClickMoveMode\\Game1Patch\\Game1Patch.csproj",
+      "projectName": "Game1Patch",
+      "projectPath": "C:\\Users\\User\\source\\repos\\RightClickMoveMode\\Game1Patch\\Game1Patch.csproj",
+      "packagesPath": "C:\\Users\\User\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\User\\source\\repos\\RightClickMoveMode\\Game1Patch\\obj\\",
+      "projectStyle": "PackageReference",
+      "skipContentFileWrite": true,
+      "configFilePaths": [
+        "C:\\Users\\User\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+      ],
+      "originalTargetFrameworks": [
+        "net452"
+      ],
+      "sources": {
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+        "https://api.nuget.org/v3/index.json": {}
+      },
+      "frameworks": {
+        "net452": {
+          "projectReferences": {
+            "C:\\Users\\User\\source\\repos\\RightClickMoveMode\\RightClickMoveMode\\RightClickMoveMode.csproj": {
+              "projectPath": "C:\\Users\\User\\source\\repos\\RightClickMoveMode\\RightClickMoveMode\\RightClickMoveMode.csproj"
+            }
+          }
+        }
+      }
+    },
+    "frameworks": {
+      "net452": {
+        "dependencies": {
+          "Lib.Harmony": {
+            "target": "Package",
+            "version": "[1.2.0, )"
+          },
+          "Pathoschild.Stardew.ModBuildConfig": {
+            "target": "Package",
+            "version": "[2.1.0, )"
+          }
+        }
+      }
+    },
+    "runtimes": {
+      "win": {
+        "#import": []
+      },
+      "win-x64": {
+        "#import": []
+      },
+      "win-x86": {
+        "#import": []
+      }
+    }
+  }
+}

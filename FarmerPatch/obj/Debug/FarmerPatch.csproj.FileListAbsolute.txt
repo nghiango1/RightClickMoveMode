@@ -1,0 +1,10 @@
+C:\Users\User\source\repos\RightClickMoveMode\FarmerPatch\bin\Debug\FarmerPatch.dll
+C:\Users\User\source\repos\RightClickMoveMode\FarmerPatch\bin\Debug\FarmerPatch.pdb
+C:\Users\User\source\repos\RightClickMoveMode\FarmerPatch\bin\Debug\0Harmony.dll
+C:\Users\User\source\repos\RightClickMoveMode\FarmerPatch\bin\Debug\RightClickMoveMode.dll
+C:\Users\User\source\repos\RightClickMoveMode\FarmerPatch\bin\Debug\RightClickMoveMode.pdb
+C:\Users\User\source\repos\RightClickMoveMode\FarmerPatch\obj\Debug\FarmerPatch.csprojAssemblyReference.cache
+C:\Users\User\source\repos\RightClickMoveMode\FarmerPatch\obj\Debug\FarmerPatch.csproj.CoreCompileInputs.cache
+C:\Users\User\source\repos\RightClickMoveMode\FarmerPatch\obj\Debug\FarmerPatch.csproj.CopyComplete
+C:\Users\User\source\repos\RightClickMoveMode\FarmerPatch\obj\Debug\FarmerPatch.dll
+C:\Users\User\source\repos\RightClickMoveMode\FarmerPatch\obj\Debug\FarmerPatch.pdb
