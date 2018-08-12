@@ -21,3 +21,23 @@
 ## 1.1 : Source code release version
 -  Extended mouse function mode added (press *H* to On/Off, auto On when open)
 -  Organize code for futher update
+
+## Pre source code release
+   This not come with the souce code, but you can have \*.dll file from RightClickMoveMode/bin/Debug along with Zip file
+
+### 1.0.3
+- Fix bug where you can't uses right-mouse nomally (eg: Can't split item in inventory, etc...) 
+
+### 1.0.2
+- Slightly smooth movement
+- Change right-click interaction when clicking to far from player
+
+### 1.0.1
+- Turn off debug mode
+
+### 1.0
+- Out pre-release
+
+### 0.1
+- Pre-release
+
