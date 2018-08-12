@@ -1,0 +1,8 @@
+C:\Users\User\source\repos\RightClickMoveMode\RightClickMoveMode\obj\Debug\RightClickMoveMode.csproj.CoreCompileInputs.cache
+C:\Users\User\source\repos\RightClickMoveMode\RightClickMoveMode\bin\Debug\RightClickMoveMode.dll
+C:\Users\User\source\repos\RightClickMoveMode\RightClickMoveMode\bin\Debug\RightClickMoveMode.pdb
+C:\Users\User\source\repos\RightClickMoveMode\RightClickMoveMode\obj\Debug\RightClickMoveMode.dll
+C:\Users\User\source\repos\RightClickMoveMode\RightClickMoveMode\obj\Debug\RightClickMoveMode.pdb
+C:\Users\User\source\repos\RightClickMoveMode\RightClickMoveMode\bin\Debug\0Harmony.dll
+C:\Users\User\source\repos\RightClickMoveMode\RightClickMoveMode\obj\Debug\RightClickMoveMode.csproj.CopyComplete
+C:\Users\User\source\repos\RightClickMoveMode\RightClickMoveMode\obj\Debug\RightClickMoveMode.csprojAssemblyReference.cache

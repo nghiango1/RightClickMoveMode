@@ -1,0 +1,166 @@
+{
+  "version": 3,
+  "targets": {
+    ".NETFramework,Version=v4.5.2": {
+      "Lib.Harmony/1.2.0.1": {
+        "type": "package",
+        "compile": {
+          "lib/net45/0Harmony.dll": {}
+        },
+        "runtime": {
+          "lib/net45/0Harmony.dll": {}
+        }
+      },
+      "Pathoschild.Stardew.ModBuildConfig/2.1.0": {
+        "type": "package",
+        "build": {
+          "build/Pathoschild.Stardew.ModBuildConfig.targets": {}
+        }
+      }
+    },
+    ".NETFramework,Version=v4.5.2/win": {
+      "Lib.Harmony/1.2.0.1": {
+        "type": "package",
+        "compile": {
+          "lib/net45/0Harmony.dll": {}
+        },
+        "runtime": {
+          "lib/net45/0Harmony.dll": {}
+        }
+      },
+      "Pathoschild.Stardew.ModBuildConfig/2.1.0": {
+        "type": "package",
+        "build": {
+          "build/Pathoschild.Stardew.ModBuildConfig.targets": {}
+        }
+      }
+    },
+    ".NETFramework,Version=v4.5.2/win-x64": {
+      "Lib.Harmony/1.2.0.1": {
+        "type": "package",
+        "compile": {
+          "lib/net45/0Harmony.dll": {}
+        },
+        "runtime": {
+          "lib/net45/0Harmony.dll": {}
+        }
+      },
+      "Pathoschild.Stardew.ModBuildConfig/2.1.0": {
+        "type": "package",
+        "build": {
+          "build/Pathoschild.Stardew.ModBuildConfig.targets": {}
+        }
+      }
+    },
+    ".NETFramework,Version=v4.5.2/win-x86": {
+      "Lib.Harmony/1.2.0.1": {
+        "type": "package",
+        "compile": {
+          "lib/net45/0Harmony.dll": {}
+        },
+        "runtime": {
+          "lib/net45/0Harmony.dll": {}
+        }
+      },
+      "Pathoschild.Stardew.ModBuildConfig/2.1.0": {
+        "type": "package",
+        "build": {
+          "build/Pathoschild.Stardew.ModBuildConfig.targets": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "Lib.Harmony/1.2.0.1": {
+      "sha512": "Gp98U0KupUI7dwonjcJF2Xn/2qE4HH8q4FGS03C/44MdP2nywaG5s0wOUPWU+5hreYC1jxNmrdm0alCSESJ9bg==",
+      "type": "package",
+      "path": "lib.harmony/1.2.0.1",
+      "files": [
+        ".signature.p7s",
+        "lib.harmony.1.2.0.1.nupkg.sha512",
+        "lib.harmony.nuspec",
+        "lib/net35/0Harmony.dll",
+        "lib/net45/0Harmony.dll",
+        "lib/net472/0Harmony.dll"
+      ]
+    },
+    "Pathoschild.Stardew.ModBuildConfig/2.1.0": {
+      "sha512": "xyslXTFh+alHuYfRINEcuEd5tVbE0/2LY7sqwIf9m3//C359OKSpGiMied6qkOA1HjPH09o77F9nNihmL+c4oA==",
+      "type": "package",
+      "path": "pathoschild.stardew.modbuildconfig/2.1.0",
+      "files": [
+        "analyzers/dotnet/cs/StardewModdingAPI.ModBuildConfig.Analyzer.dll",
+        "build/Pathoschild.Stardew.ModBuildConfig.targets",
+        "build/StardewModdingAPI.ModBuildConfig.dll",
+        "build/StardewModdingAPI.Toolkit.CoreInterfaces.dll",
+        "build/StardewModdingAPI.Toolkit.dll",
+        "pathoschild.stardew.modbuildconfig.2.1.0.nupkg.sha512",
+        "pathoschild.stardew.modbuildconfig.nuspec",
+        "tools/install.ps1",
+        "tools/uninstall.ps1"
+      ]
+    }
+  },
+  "projectFileDependencyGroups": {
+    ".NETFramework,Version=v4.5.2": [
+      "Lib.Harmony >= 1.2.0.1",
+      "Pathoschild.Stardew.ModBuildConfig >= 2.1.0"
+    ]
+  },
+  "packageFolders": {
+    "C:\\Users\\User\\.nuget\\packages\\": {}
+  },
+  "project": {
+    "version": "1.0.0",
+    "restore": {
+      "projectUniqueName": "C:\\Users\\User\\source\\repos\\RightClickMoveMode\\RightClickMoveMode\\RightClickMoveMode.csproj",
+      "projectName": "RightClickMoveMode",
+      "projectPath": "C:\\Users\\User\\source\\repos\\RightClickMoveMode\\RightClickMoveMode\\RightClickMoveMode.csproj",
+      "packagesPath": "C:\\Users\\User\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\User\\source\\repos\\RightClickMoveMode\\RightClickMoveMode\\obj\\",
+      "projectStyle": "PackageReference",
+      "skipContentFileWrite": true,
+      "configFilePaths": [
+        "C:\\Users\\User\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+      ],
+      "originalTargetFrameworks": [
+        "net452"
+      ],
+      "sources": {
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+        "https://api.nuget.org/v3/index.json": {}
+      },
+      "frameworks": {
+        "net452": {
+          "projectReferences": {}
+        }
+      }
+    },
+    "frameworks": {
+      "net452": {
+        "dependencies": {
+          "Lib.Harmony": {
+            "target": "Package",
+            "version": "[1.2.0.1, )"
+          },
+          "Pathoschild.Stardew.ModBuildConfig": {
+            "target": "Package",
+            "version": "[2.1.0, )"
+          }
+        }
+      }
+    },
+    "runtimes": {
+      "win": {
+        "#import": []
+      },
+      "win-x64": {
+        "#import": []
+      },
+      "win-x86": {
+        "#import": []
+      }
+    }
+  }
+}
