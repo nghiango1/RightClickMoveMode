@@ -4,10 +4,7 @@ using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using Harmony;
 using Microsoft.Xna.Framework;
-<<<<<<< HEAD
 using System.Reflection;
-=======
->>>>>>> 89c0e10b0d15446ba2e6cc96e285bfdcfc8a4572
 
 namespace RightClickMoveMode
 {
@@ -47,11 +44,7 @@ namespace RightClickMoveMode
         private static int currentToolIndex = 1;
         
         public static bool isDebugMode = false;
-<<<<<<< HEAD
         
-=======
-
->>>>>>> 89c0e10b0d15446ba2e6cc96e285bfdcfc8a4572
         public override void Entry(IModHelper helper)
         {
             InputEvents.ButtonPressed += this.InputEvents_ButtonPressed;
@@ -60,12 +53,7 @@ namespace RightClickMoveMode
             GameEvents.UpdateTick += this.GameEvents_UpdateTick;
             PlayerEvents.Warped += this.PlayerEvents_Warped;
 
-<<<<<<< HEAD
             StartPatching();
-=======
-            HarmonyInstance harmony = HarmonyInstance.Create("RightClickMoveMode.UpdateControlInputPatch");
-            harmony.PatchAll();
->>>>>>> 89c0e10b0d15446ba2e6cc96e285bfdcfc8a4572
 
             position_MouseOnScreen = new Vector2(0f, 0f);
             position_Source = new Vector2(0f, 0f);
@@ -169,17 +157,14 @@ namespace RightClickMoveMode
 
             if (flag)
             {
-<<<<<<< HEAD
                 bool flag2 = button == "MouseRight" && isRightClickMoveModeOn && Context.IsPlayerFree;
 
                 if (Game1.player.ActiveObject != null)
+                {
                     flag2 = flag2 && !(Game1.player.ActiveObject.getCategoryName() == "Furniture");
-
+                    isBeingControl = true;
+                }
                 if (flag2)
-=======
-                bool flag3 = button == "MouseRight" && isRightClickMoveModeOn && Context.IsPlayerFree;
-                if (flag3)
->>>>>>> 89c0e10b0d15446ba2e6cc96e285bfdcfc8a4572
                 {
                     currentToolIndex = Game1.player.CurrentToolIndex;
 
@@ -187,16 +172,11 @@ namespace RightClickMoveMode
                     isHoldingMove = true;
                     isBeingControl = false;
                     isMouseOutsiteHitBox = vector_PlayerToMouse.Length().CompareTo(hitboxRadius) > 0;
-<<<<<<< HEAD
 
                     bool flag3 = false;
                     flag3 = flag3 && isMouseOutsiteHitBox;
 
                     if (flag3)
-=======
-                    
-                    if (isMouseOutsiteHitBox)//  || Game1.player.ActiveObject.isPlaceable())
->>>>>>> 89c0e10b0d15446ba2e6cc96e285bfdcfc8a4572
                     {
                         e.SuppressButton();
                     }
@@ -361,7 +341,6 @@ namespace RightClickMoveMode
                 }
             }
         }
-<<<<<<< HEAD
 
         public static void StartPatching()
         {
@@ -405,8 +384,6 @@ namespace RightClickMoveMode
                     ModEntry.isBeingAutoCommand = false;
             }
         }
-=======
->>>>>>> 89c0e10b0d15446ba2e6cc96e285bfdcfc8a4572
     }   
 }
 
