@@ -8,9 +8,15 @@ using System.Reflection;
 
 namespace RightClickMoveMode
 {
+    public class ModConfig
+    {
+        public String RightClickMoveModeOpenButton { get; set; } = "G";
+        public String ExtendedModeOpenButton { get; set; } = "H";
+    }
+
     public class ModEntry : Mod
     {
-        //private Config Config;
+        private ModConfig config;
 
         public const float hitboxRadius = 64f * 2;
 
@@ -29,7 +35,10 @@ namespace RightClickMoveMode
         public static bool isHoldingRightCtrl = false;
         public static bool isHoldingRightAlt = false;
         public static bool isWheeling = false;
-        
+
+        private String RightClickMoveModeOpenButton;
+
+        private String ExtendedModeOpenButton;
 
         private static Vector2 vector_PlayerToDestination;  
         private static Vector2 vector_PlayerToMouse;
@@ -44,7 +53,7 @@ namespace RightClickMoveMode
         private static int currentToolIndex = 1;
         
         public static bool isDebugMode = false;
-        
+
         public override void Entry(IModHelper helper)
         {
             InputEvents.ButtonPressed += this.InputEvents_ButtonPressed;
@@ -54,6 +63,11 @@ namespace RightClickMoveMode
             PlayerEvents.Warped += this.PlayerEvents_Warped;
 
             StartPatching();
+
+            this.config = this.Helper.ReadConfig<ModConfig>();
+
+            RightClickMoveModeOpenButton = this.config.RightClickMoveModeOpenButton.ToUpper();
+            ExtendedModeOpenButton = this.config.ExtendedModeOpenButton.ToUpper();
 
             position_MouseOnScreen = new Vector2(0f, 0f);
             position_Source = new Vector2(0f, 0f);
@@ -79,6 +93,14 @@ namespace RightClickMoveMode
                 {
                     if (Context.IsPlayerFree)
                     {
+                        if (Game1.player.ActiveObject != null)
+                        {
+                            if (isMovingAutomaticaly && Game1.player.ActiveObject.getCategoryName() == "Furniture")
+                            {
+                                isMovingAutomaticaly = false;
+                                Game1.player.Halt();
+                            }
+                        }
                         if (isHoldingMove)
                         {
                             isMovingAutomaticaly = true;
@@ -119,11 +141,11 @@ namespace RightClickMoveMode
             bool flag = Context.IsWorldReady;
             string button = e.Button.ToString();
             
-            if (button == "G")
+            if (button == RightClickMoveModeOpenButton)
             {
                 isRightClickMoveModeOn = !isRightClickMoveModeOn;
             }
-            if (button == "H")
+            if (button == ExtendedModeOpenButton)
             {
                 isExtendedModeOn = !isExtendedModeOn;
             }
@@ -161,8 +183,10 @@ namespace RightClickMoveMode
 
                 if (Game1.player.ActiveObject != null)
                 {
-                    flag2 = flag2 && !(Game1.player.ActiveObject.getCategoryName() == "Furniture");
-                    isBeingControl = true;
+                    if (Game1.player.ActiveObject.getCategoryName() == "Furniture")
+                    {
+                        flag2 = false;
+                    }
                 }
                 if (flag2)
                 {
@@ -174,7 +198,7 @@ namespace RightClickMoveMode
                     isMouseOutsiteHitBox = vector_PlayerToMouse.Length().CompareTo(hitboxRadius) > 0;
 
                     bool flag3 = false;
-                    flag3 = flag3 && isMouseOutsiteHitBox;
+                    flag3 = flag3 || isMouseOutsiteHitBox;
 
                     if (flag3)
                     {
@@ -371,17 +395,17 @@ namespace RightClickMoveMode
 
         public static void PostfixMethod_Game1Patch(Game1 __instance)
         {
-            if (ModEntry.isRightClickMoveModeOn)
+            if (isRightClickMoveModeOn)
             {
-                if (!ModEntry.isBeingControl && Context.IsPlayerFree)
+                if (!isBeingControl && Context.IsPlayerFree)
                 {
-                    ModEntry.isBeingAutoCommand = true;
-                    ModEntry.MoveVectorToCommand();
+                    isBeingAutoCommand = true;
+                    MoveVectorToCommand();
                     Game1.player.running = true;
-                    ModEntry.isBeingAutoCommand = false;
+                    isBeingAutoCommand = false;
                 }
                 else
-                    ModEntry.isBeingAutoCommand = false;
+                    isBeingAutoCommand = false;
             }
         }
     }   
