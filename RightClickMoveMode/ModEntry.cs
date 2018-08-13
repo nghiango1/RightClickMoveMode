@@ -4,6 +4,7 @@ using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using Harmony;
 using Microsoft.Xna.Framework;
+using System.Reflection;
 
 namespace RightClickMoveMode
 {
@@ -43,7 +44,7 @@ namespace RightClickMoveMode
         private static int currentToolIndex = 1;
         
         public static bool isDebugMode = false;
-
+        
         public override void Entry(IModHelper helper)
         {
             InputEvents.ButtonPressed += this.InputEvents_ButtonPressed;
@@ -52,8 +53,7 @@ namespace RightClickMoveMode
             GameEvents.UpdateTick += this.GameEvents_UpdateTick;
             PlayerEvents.Warped += this.PlayerEvents_Warped;
 
-            HarmonyInstance harmony = HarmonyInstance.Create("RightClickMoveMode.UpdateControlInputPatch");
-            harmony.PatchAll();
+            StartPatching();
 
             position_MouseOnScreen = new Vector2(0f, 0f);
             position_Source = new Vector2(0f, 0f);
@@ -157,8 +157,14 @@ namespace RightClickMoveMode
 
             if (flag)
             {
-                bool flag3 = button == "MouseRight" && isRightClickMoveModeOn && Context.IsPlayerFree;
-                if (flag3)
+                bool flag2 = button == "MouseRight" && isRightClickMoveModeOn && Context.IsPlayerFree;
+
+                if (Game1.player.ActiveObject != null)
+                {
+                    flag2 = flag2 && !(Game1.player.ActiveObject.getCategoryName() == "Furniture");
+                    isBeingControl = true;
+                }
+                if (flag2)
                 {
                     currentToolIndex = Game1.player.CurrentToolIndex;
 
@@ -166,8 +172,11 @@ namespace RightClickMoveMode
                     isHoldingMove = true;
                     isBeingControl = false;
                     isMouseOutsiteHitBox = vector_PlayerToMouse.Length().CompareTo(hitboxRadius) > 0;
-                    
-                    if (isMouseOutsiteHitBox)//  || Game1.player.ActiveObject.isPlaceable())
+
+                    bool flag3 = false;
+                    flag3 = flag3 && isMouseOutsiteHitBox;
+
+                    if (flag3)
                     {
                         e.SuppressButton();
                     }
@@ -330,6 +339,49 @@ namespace RightClickMoveMode
                 {
                     ModEntry.isMovingAutomaticaly = false;
                 }
+            }
+        }
+
+        public static void StartPatching()
+        {
+            HarmonyInstance newHarmony = HarmonyInstance.Create("ylsama.RightClickMoveMode");
+
+            MethodInfo farmerInfo = AccessTools.Method(typeof(Farmer), "Halt");
+            MethodInfo farmerHaltPrefix = AccessTools.Method(typeof(ModEntry), "PrefixMethod_FarmerPatch");
+
+            MethodInfo game1Info = AccessTools.Method(typeof(Game1), "UpdateControlInput", new Type[] { typeof(GameTime) });
+            MethodInfo game1HaltPostfix = AccessTools.Method(typeof(ModEntry), "PostfixMethod_Game1Patch");
+
+            newHarmony.Patch(farmerInfo, new HarmonyMethod(farmerHaltPrefix));
+            newHarmony.Patch(game1Info, null, new HarmonyMethod(game1HaltPostfix));
+        }
+
+        public static bool PrefixMethod_FarmerPatch(Game1 __instance)
+        {
+            if (isRightClickMoveModeOn)
+            {
+                if (!isMovingAutomaticaly || isBeingAutoCommand)
+                    return true;
+                else
+                    return false;
+            }
+            else
+                return true;
+        }
+
+        public static void PostfixMethod_Game1Patch(Game1 __instance)
+        {
+            if (ModEntry.isRightClickMoveModeOn)
+            {
+                if (!ModEntry.isBeingControl && Context.IsPlayerFree)
+                {
+                    ModEntry.isBeingAutoCommand = true;
+                    ModEntry.MoveVectorToCommand();
+                    Game1.player.running = true;
+                    ModEntry.isBeingAutoCommand = false;
+                }
+                else
+                    ModEntry.isBeingAutoCommand = false;
             }
         }
     }   
