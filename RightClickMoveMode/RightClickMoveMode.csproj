@@ -46,13 +46,20 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+<<<<<<< HEAD
+=======
+    <Compile Include="Game1Patch.cs" />
+>>>>>>> 89c0e10b0d15446ba2e6cc96e285bfdcfc8a4572
     <Compile Include="ModEntry.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+<<<<<<< HEAD
     <WCFMetadata Include="Connected Services\" />
   </ItemGroup>
   <ItemGroup>
+=======
+>>>>>>> 89c0e10b0d15446ba2e6cc96e285bfdcfc8a4572
     <None Include="manifest.json">
       <Generator>MSBuild:Compile</Generator>
     </None>

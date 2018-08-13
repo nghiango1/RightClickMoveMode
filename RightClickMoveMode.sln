@@ -5,6 +5,16 @@ VisualStudioVersion = 15.0.27703.2026
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RightClickMoveMode", "RightClickMoveMode\RightClickMoveMode.csproj", "{429B5BB3-B9F3-4811-A16C-B9B98B9A2C9C}"
 EndProject
+<<<<<<< HEAD
+=======
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "root", "root", "{596D7E82-EFD1-47C5-BB0C-BA2F1171B813}"
+	ProjectSection(SolutionItems) = preProject
+		.gitattributes = .gitattributes
+		.gitignore = .gitignore
+		README.md = README.md
+	EndProjectSection
+EndProject
+>>>>>>> 89c0e10b0d15446ba2e6cc96e285bfdcfc8a4572
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
