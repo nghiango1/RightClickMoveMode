@@ -23,12 +23,10 @@
 -  Organize code for futher update
 
 ## Pre source code release
-   This not come with the souce code, but you can have \*.dll file from RightClickMoveMode/bin/Debug along with Zip file
-
-### 1.0.3
-- Fix bug where you can't uses right-mouse nomally (eg: Can't split item in inventory, etc...) 
+   This not come with the souce code, but you can have \*.dll file from https://www.nexusmods.com/stardewvalley/mods/2614 along with Zip file
 
 ### 1.0.2
+- Fix bug where you can't uses right-mouse nomally (eg: Can't split item in inventory, etc...) 
 - Slightly smooth movement
 - Change right-click interaction when clicking to far from player
 
