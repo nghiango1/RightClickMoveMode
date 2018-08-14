@@ -5,6 +5,7 @@ using StardewModdingAPI.Events;
 using Harmony;
 using Microsoft.Xna.Framework;
 using System.Reflection;
+using StardewValley.Objects;
 
 namespace RightClickMoveMode
 {
@@ -38,6 +39,8 @@ namespace RightClickMoveMode
         public static bool isHoldingRightAlt = false;
         public static bool isWheeling = false;
 
+        public static bool isDone = false;
+
         private String RightClickMoveModeOpenButton;
 
         private String ExtendedModeOpenButton;
@@ -49,8 +52,11 @@ namespace RightClickMoveMode
         private static Vector2 position_MouseOnScreen;
         private static Vector2 position_Source;
         private static Vector2 position_Destination;
-        
+
+        private static Vector2 grabTile;
+
         private static int tickCount = 15;
+        private static int stuckCount = 30;
 
         private static int currentToolIndex = 1;
         
@@ -100,7 +106,7 @@ namespace RightClickMoveMode
                     {
                         if (Game1.player.ActiveObject != null)
                         {
-                            if (isMovingAutomaticaly && Game1.player.ActiveObject.getCategoryName() == "Furniture")
+                            if (isMovingAutomaticaly && (Game1.player.ActiveObject is Furniture))
                             {
                                 isMovingAutomaticaly = false;
                                 Game1.player.Halt();
@@ -109,7 +115,9 @@ namespace RightClickMoveMode
                         if (isHoldingMove)
                         {
                             isMovingAutomaticaly = true;
-
+                            
+                            grabTile = new Vector2((float)(Game1.getOldMouseX() + Game1.viewport.X), (float)(Game1.getOldMouseY() + Game1.viewport.Y)) / 64f;
+                            
                             if (isBeingControl)
                             {
                                 if (tickCount == 0)
@@ -195,15 +203,15 @@ namespace RightClickMoveMode
                 }
                 if (flag2)
                 {
-                    currentToolIndex = Game1.player.CurrentToolIndex;
-
                     ModEntry.isMovingAutomaticaly = true;
                     isHoldingMove = true;
                     isBeingControl = false;
                     isMouseOutsiteHitBox = vector_PlayerToMouse.Length().CompareTo(hitboxRadius) > 0;
-
                     bool flag3 = false;
                     flag3 = flag3 || isMouseOutsiteHitBox;
+                    
+                    grabTile = new Vector2((float)(Game1.getOldMouseX() + Game1.viewport.X), (float)(Game1.getOldMouseY() + Game1.viewport.Y)) / 64f;
+                    isDone = false;
 
                     if (flag3)
                     {
@@ -220,7 +228,6 @@ namespace RightClickMoveMode
                         tickCount = 0;
                     isBeingControl = true;
                 }
-
             }
         }
 
@@ -309,6 +316,8 @@ namespace RightClickMoveMode
 
                         vector_PlayerToDestination.X = position_Destination.X - Game1.player.Position.X - 32f;
                         vector_PlayerToDestination.Y = position_Destination.Y - Game1.player.Position.Y - 10f;
+                        
+                        grabTile = new Vector2((float)(Game1.getOldMouseX() + Game1.viewport.X), (float)(Game1.getOldMouseY() + Game1.viewport.Y)) / 64f;
                     }
                 }
             }
@@ -322,6 +331,7 @@ namespace RightClickMoveMode
             
             if (flag)
             {
+
                 if (isHoldingMove)
                 {
                     vector_AutoMove.X = vector_PlayerToMouse.X;
@@ -332,7 +342,35 @@ namespace RightClickMoveMode
                     vector_AutoMove.X = vector_PlayerToDestination.X;
                     vector_AutoMove.Y = vector_PlayerToDestination.Y;
                 }
-                
+
+
+                if (Utility.tileWithinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 1, Game1.player))
+                {
+                    if (!isDone && !(Game1.player.ActiveObject == null) && !(Game1.player.ActiveObject is Furniture) && Game1.player.ActiveObject.isPlaceable())
+                    {
+                        isDone = true;
+                        int stack = Game1.player.ActiveObject.Stack;
+                        Utility.tryToPlaceItem(Game1.currentLocation, Game1.player.ActiveObject, (int)grabTile.X * 64 + 32, (int)grabTile.Y * 64 + 32);
+                        if (Game1.player.ActiveObject == null || stack < Game1.player.ActiveObject.Stack)
+                        {
+                            ModEntry.isMovingAutomaticaly = false;
+                            if (isHoldingMove)
+                            {
+                                isBeingControl = true;
+                                tickCount = 15;
+                            }
+                        }
+                    }
+                    if (!isDone)
+                    {
+                        isDone = Game1.tryToCheckAt(grabTile, Game1.player);
+                        if (!isDone)
+                        {
+                            grabTile.Y += 1f;
+                            isDone = Game1.tryToCheckAt(grabTile, Game1.player);
+                        }
+                    }
+                }
                 Game1.player.movementDirections.Clear();
                 if (vector_AutoMove.X <= 5 && vector_AutoMove.X >= -5)
                     flag2 = true;
@@ -366,6 +404,10 @@ namespace RightClickMoveMode
 
                 if (flag2 && flag3)
                 {
+                    if (!isDone)
+                    {
+                        Game1.tryToCheckAt(Game1.player.getTileLocation(), Game1.player);
+                    }
                     ModEntry.isMovingAutomaticaly = false;
                 }
             }
