@@ -10,6 +10,8 @@ namespace RightClickMoveMode
 {
     public class ModConfig
     {
+        public String RightClickMoveModeDefault { get; set; } = "On";
+        public String ExtendedModeDefault { get; set; } = "On";
         public String RightClickMoveModeOpenButton { get; set; } = "G";
         public String ExtendedModeOpenButton { get; set; } = "H";
     }
@@ -68,6 +70,9 @@ namespace RightClickMoveMode
 
             RightClickMoveModeOpenButton = this.config.RightClickMoveModeOpenButton.ToUpper();
             ExtendedModeOpenButton = this.config.ExtendedModeOpenButton.ToUpper();
+
+            isRightClickMoveModeOn = this.config.RightClickMoveModeDefault.ToUpper() == "ON";
+            isExtendedModeOn = this.config.ExtendedModeDefault.ToUpper() == "ON";
 
             position_MouseOnScreen = new Vector2(0f, 0f);
             position_Source = new Vector2(0f, 0f);
@@ -167,7 +172,7 @@ namespace RightClickMoveMode
 
                 if (button == "Enter" && isHoldingRightAlt)
                 {
-                    if (Game1.options.isCurrentlyWindowedBorderless())
+                    if (Game1.options.isCurrentlyWindowedBorderless() || Game1.options.isCurrentlyFullscreen())
                         Game1.options.setWindowedOption("Windowed");
                     else
                     {
