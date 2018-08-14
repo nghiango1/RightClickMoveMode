@@ -20,6 +20,10 @@ namespace RightClickMoveMode
     {
         private ModConfig config;
 
+        //DJ-STLN
+        public static bool specialCooldown;
+        //
+
         public const float hitboxRadius = 64f * 2;
 
         public static bool isRightClickMoveModeOn = true;
@@ -86,6 +90,16 @@ namespace RightClickMoveMode
             bool flag = Context.IsWorldReady;
             if (flag)
             {
+                //DJ-STLN
+                if (StardewValley.Tools.MeleeWeapon.defenseCooldown > 0 || StardewValley.Tools.MeleeWeapon.daggerCooldown > 0 || StardewValley.Tools.MeleeWeapon.clubCooldown > 0)
+                {
+                    specialCooldown = true;
+                }
+                else
+                {
+                    specialCooldown = false;
+                }
+                //
                 if (isExtendedModeOn)
                 {
                     if ((isHoldingLeftCtrl || isHoldingRightCtrl) && isWheeling)
@@ -123,8 +137,10 @@ namespace RightClickMoveMode
                         }
                         else
                         {
-                            vector_PlayerToDestination.X = position_Destination.X - Game1.player.Position.X - 32f;
-                            vector_PlayerToDestination.Y = position_Destination.Y - Game1.player.Position.Y - 10f;
+                            isMovingAutomaticaly = false; // DJ-STLN: COMMENTED CODE THAT KEEPS RUNNING. ADDED: isMovingAutomaticaly = false; 
+                            //Will now only run while holding right-click.
+                            //vector_PlayerToDestination.X = position_Destination.X - Game1.player.Position.X - 32f;
+                    
                         }
 
                         vector_PlayerToMouse.X = position_MouseOnScreen.X + Game1.viewport.X - Game1.player.Position.X - 32f;
@@ -184,7 +200,7 @@ namespace RightClickMoveMode
 
             if (flag)
             {
-                bool flag2 = button == "MouseRight" && isRightClickMoveModeOn && Context.IsPlayerFree;
+                bool flag2 = button == "MouseRight" && isRightClickMoveModeOn && Context.IsPlayerFree && specialCooldown; // DJ-STLN: && specialCooldown;
 
                 if (Game1.player.ActiveObject != null)
                 {
