@@ -13,8 +13,9 @@ namespace RightClickMoveMode
     public class ModConfig
     {
         public String RightClickMoveModeDefault { get; set; } = "On";
-        public String WeaponsSpecticalInteraction { get; set; } = "Disable";
-        public String HoldingMoveOnly { get; set; } = "Enable";
+        public String WeaponsSpecticalInteraction { get; set; } = "Enable";
+        public String WeaponsSpecticalInteractionType { get; set; } = "Disable";
+        public String HoldingMoveOnly { get; set; } = "Disable";
         public String ExtendedModeDefault { get; set; } = "On";
         public String RightClickMoveModeOpenButton { get; set; } = "G";
         public String ExtendedModeOpenButton { get; set; } = "H";
@@ -44,7 +45,7 @@ namespace RightClickMoveMode
         public static bool isHoldingRightAlt = false;
         public static bool isWheeling = false;
 
-        public static bool isDone = false;
+        public static bool isDone = true;
 
         public static StardewValley.Object pointedObject = null;
         public static StardewValley.Object pointedObjectDebug = null;
@@ -273,8 +274,6 @@ namespace RightClickMoveMode
                     else
                         pointedObject = null;
 
-                    isDone = false;
-
                     bool flag3 = false;
                     flag3 = flag3 || isMouseOutsiteHitBox;
                     
@@ -388,6 +387,11 @@ namespace RightClickMoveMode
                             pointedObject = Game1.player.currentLocation.getObjectAtTile((int)grabTile.X, (int)grabTile.Y);
                         else
                             pointedObject = null;
+
+                        if (isMouseOutsiteHitBox)
+                        {
+                            isDone = false;
+                        }
                     }
                 }
             }
@@ -444,34 +448,26 @@ namespace RightClickMoveMode
 
                 Game1.player.movementDirections.Clear();
                 if (vector_AutoMove.X <= 5 && vector_AutoMove.X >= -5)
+                {
+                    vector_AutoMove.X = 0;
                     flag2 = true;
+                }
                 else if (vector_AutoMove.X >= 5)
                     Game1.player.SetMovingRight(true);
                 else if (vector_AutoMove.X <= -5)
                     Game1.player.SetMovingLeft(true);
 
                 if (vector_AutoMove.Y <= 5 && vector_AutoMove.Y >= -5)
+                {
+                    vector_AutoMove.Y = 0;
                     flag3 = true;
+                }
                 else if (vector_AutoMove.Y >= 5)
                     Game1.player.SetMovingDown(true);
                 else if (vector_AutoMove.Y <= -5)
                     Game1.player.SetMovingUp(true);
 
                 vector_AutoMove.Normalize();
-
-                if (Game1.player.movementDirections.Count == 2)
-                {
-                    if (Math.Abs(vector_AutoMove.Y / vector_AutoMove.X).CompareTo(0.45f) < 0)
-                    {
-                        Game1.player.SetMovingDown(false);
-                        Game1.player.SetMovingUp(false);
-                    }
-                    else if (Math.Abs(vector_AutoMove.Y) > Math.Sin(Math.PI/3))
-                    {
-                        Game1.player.SetMovingRight(false);
-                        Game1.player.SetMovingLeft(false);
-                    }
-                }
 
                 //if (pointedObject != null && !isDone)
                 //{
@@ -497,14 +493,21 @@ namespace RightClickMoveMode
         {
             HarmonyInstance newHarmony = HarmonyInstance.Create("ylsama.RightClickMoveMode");
 
-            MethodInfo farmerInfo = AccessTools.Method(typeof(Farmer), "Halt");
+            MethodInfo farmeHaltrInfo = AccessTools.Method(typeof(Farmer), "Halt");
+
+            MethodInfo farmerMovePositionInfo = AccessTools.Method(typeof(Farmer), "MovePosition", new Type[] { typeof(GameTime), typeof(xTile.Dimensions.Rectangle), typeof(GameLocation) });
+
             MethodInfo farmerHaltPrefix = AccessTools.Method(typeof(ModEntry), "PrefixMethod_FarmerPatch");
 
             MethodInfo game1Info = AccessTools.Method(typeof(Game1), "UpdateControlInput", new Type[] { typeof(GameTime) });
+
             MethodInfo game1HaltPostfix = AccessTools.Method(typeof(ModEntry), "PostfixMethod_Game1Patch");
 
-            newHarmony.Patch(farmerInfo, new HarmonyMethod(farmerHaltPrefix));
+            MethodInfo farmerMovePositionPrefix = AccessTools.Method(typeof(ModEntry), "PrefixMethod_FarmerMovePositionPatch");
+
+            newHarmony.Patch(farmeHaltrInfo, new HarmonyMethod(farmerHaltPrefix));
             newHarmony.Patch(game1Info, null, new HarmonyMethod(game1HaltPostfix));
+            newHarmony.Patch(farmerMovePositionInfo, new HarmonyMethod(farmerMovePositionPrefix));
         }
 
         public static bool PrefixMethod_FarmerPatch(Game1 __instance)
@@ -518,6 +521,19 @@ namespace RightClickMoveMode
             }
             else
                 return true;
+        }
+
+        public static bool PrefixMethod_FarmerMovePositionPatch(Game1 __instance)
+        {
+            if (isRightClickMoveModeOn)
+            {
+                if (!isBeingControl && isMovingAutomaticaly && Context.IsPlayerFree)
+                {
+                    MovePosition(Game1.currentGameTime, Game1.viewport, Game1.currentLocation);
+                    return false;
+                }
+            }
+            return true;
         }
 
         public static void PostfixMethod_Game1Patch(Game1 __instance)
@@ -535,6 +551,254 @@ namespace RightClickMoveMode
                     isBeingAutoCommand = false;
             }
         }
-    }   
+
+        public static void MovePosition(GameTime time, xTile.Dimensions.Rectangle viewport, GameLocation currentLocation)
+        {
+            if (Game1.player.xVelocity != 0f || Game1.player.yVelocity != 0f)
+            {
+                if (double.IsNaN((double)Game1.player.xVelocity) || double.IsNaN((double)Game1.player.yVelocity))
+                {
+                    Game1.player.xVelocity = 0f;
+                    Game1.player.yVelocity = 0f;
+                }
+                Rectangle nextPositionFloor = Game1.player.GetBoundingBox();
+                nextPositionFloor.X += (int)Math.Floor((double)Game1.player.xVelocity);
+                nextPositionFloor.Y -= (int)Math.Floor((double)Game1.player.yVelocity);
+                Rectangle nextPositionCeil = Game1.player.GetBoundingBox();
+                nextPositionCeil.X += (int)Math.Ceiling((double)Game1.player.xVelocity);
+                nextPositionCeil.Y -= (int)Math.Ceiling((double)Game1.player.yVelocity);
+                Rectangle nextPosition = Rectangle.Union(nextPositionFloor, nextPositionCeil);
+                if (!currentLocation.isCollidingPosition(nextPosition, viewport, true, -1, false, Game1.player))
+                {
+                    Game1.player.position.X += Game1.player.xVelocity;
+                    Game1.player.position.Y -= Game1.player.yVelocity;
+                    Game1.player.xVelocity -= Game1.player.xVelocity / 16f;
+                    Game1.player.yVelocity -= Game1.player.yVelocity / 16f;
+                    if (Math.Abs(Game1.player.xVelocity) <= 0.05f)
+                    {
+                        Game1.player.xVelocity = 0f;
+                    }
+                    if (Math.Abs(Game1.player.yVelocity) <= 0.05f)
+                    {
+                        Game1.player.yVelocity = 0f;
+                    }
+                }
+                else
+                {
+                    Game1.player.xVelocity -= Game1.player.xVelocity / 16f;
+                    Game1.player.yVelocity -= Game1.player.yVelocity / 16f;
+                    if (Math.Abs(Game1.player.xVelocity) <= 0.05f)
+                    {
+                        Game1.player.xVelocity = 0f;
+                    }
+                    if (Math.Abs(Game1.player.yVelocity) <= 0.05f)
+                    {
+                        Game1.player.yVelocity = 0f;
+                    }
+                }
+            }
+
+            if (Game1.player.CanMove || Game1.eventUp || Game1.player.controller != null)
+            {
+                if (!Game1.player.temporaryImpassableTile.Intersects(Game1.player.GetBoundingBox()))
+                {
+                    Game1.player.temporaryImpassableTile = Rectangle.Empty;
+                }
+                
+                float movementSpeed = Game1.player.getMovementSpeed();
+                Game1.player.temporarySpeedBuff = 0f;
+
+                if (Game1.player.movementDirections.Count > 1)
+                {
+                    if (Game1.CurrentEvent == null || Game1.CurrentEvent.playerControlSequence)
+                    {
+                        movementSpeed /= 0.7f;
+                    }
+                    else
+                    {
+                        movementSpeed = (float)Math.Max(1, movementSpeed);
+                    }
+                }
+                
+                if (Game1.player.movementDirections.Contains(0))
+                {
+                    Warp warp = Game1.currentLocation.isCollidingWithWarp(Game1.player.nextPosition(0));
+                    if (warp != null && Game1.player.IsLocalPlayer)
+                    {
+                        Game1.player.warpFarmer(warp);
+                        return;
+                    }
+                    if (!currentLocation.isCollidingPosition(Game1.player.nextPosition(0), viewport, true, 0, false, Game1.player))
+                    {
+                        Game1.player.position.Y -= movementSpeed * Math.Abs(vector_AutoMove.Y);
+                        Game1.player.behaviorOnMovement(0);
+                    }
+                    else if (!currentLocation.isCollidingPosition(Game1.player.nextPositionHalf(0), viewport, true, 0, false, Game1.player))
+                    {
+                        Game1.player.position.Y -= movementSpeed * Math.Abs(vector_AutoMove.Y) / 2f;
+                        Game1.player.behaviorOnMovement(0);
+                    }
+                    else if (Game1.player.movementDirections.Count == 1)
+                    {
+                        Rectangle tmp = Game1.player.nextPosition(0);
+                        tmp.Width /= 4;
+                        bool leftCorner = currentLocation.isCollidingPosition(tmp, viewport, true, 0, false, Game1.player);
+                        tmp.X += tmp.Width * 3;
+                        bool rightCorner = currentLocation.isCollidingPosition(tmp, viewport, true, 0, false, Game1.player);
+                        if (leftCorner && !rightCorner && !currentLocation.isCollidingPosition(Game1.player.nextPosition(1), viewport, true, 0, false, Game1.player))
+                        {
+                            Game1.player.position.X += (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
+                        }
+                        else if (rightCorner && !leftCorner && !currentLocation.isCollidingPosition(Game1.player.nextPosition(3), viewport, true, 0, false, Game1.player))
+                        {
+                            Game1.player.position.X -= (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
+                        }
+                    }
+                }
+                if (Game1.player.movementDirections.Contains(2))
+                {
+                    Warp warp2 = Game1.currentLocation.isCollidingWithWarp(Game1.player.nextPosition(2));
+                    if (warp2 != null && Game1.player.IsLocalPlayer)
+                    {
+                        Game1.player.warpFarmer(warp2);
+                        return;
+                    }
+                    if (!currentLocation.isCollidingPosition(Game1.player.nextPosition(2), viewport, true, 0, false, Game1.player))
+                    {
+                        Game1.player.position.Y += movementSpeed * Math.Abs(vector_AutoMove.Y);
+                        Game1.player.behaviorOnMovement(2);
+                    }
+                    else if (!currentLocation.isCollidingPosition(Game1.player.nextPositionHalf(2), viewport, true, 0, false, Game1.player))
+                    {
+                        Game1.player.position.Y += movementSpeed * Math.Abs(vector_AutoMove.Y) / 2f;
+                        Game1.player.behaviorOnMovement(2);
+                    }
+                    else if (Game1.player.movementDirections.Count == 1)
+                    {
+                        Rectangle tmp2 = Game1.player.nextPosition(2);
+                        tmp2.Width /= 4;
+                        bool leftCorner2 = currentLocation.isCollidingPosition(tmp2, viewport, true, 0, false, Game1.player);
+                        tmp2.X += tmp2.Width * 3;
+                        bool rightCorner2 = currentLocation.isCollidingPosition(tmp2, viewport, true, 0, false, Game1.player);
+                        if (leftCorner2 && !rightCorner2 && !currentLocation.isCollidingPosition(Game1.player.nextPosition(1), viewport, true, 0, false, Game1.player))
+                        {
+                            Game1.player.position.X += (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
+                        }
+                        else if (rightCorner2 && !leftCorner2 && !currentLocation.isCollidingPosition(Game1.player.nextPosition(3), viewport, true, 0, false, Game1.player))
+                        {
+                            Game1.player.position.X -= (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
+                        }
+                    }
+                }
+                if (Game1.player.movementDirections.Contains(1))
+                {
+                    Warp warp3 = Game1.currentLocation.isCollidingWithWarp(Game1.player.nextPosition(1));
+                    if (warp3 != null && Game1.player.IsLocalPlayer)
+                    {
+                        Game1.player.warpFarmer(warp3);
+                        return;
+                    }
+                    if (!currentLocation.isCollidingPosition(Game1.player.nextPosition(1), viewport, true, 0, false, Game1.player))
+                    {
+                        Game1.player.position.X += movementSpeed * Math.Abs(vector_AutoMove.X);
+                        Game1.player.behaviorOnMovement(1);
+                    }
+                    else if (!currentLocation.isCollidingPosition(Game1.player.nextPositionHalf(1), viewport, true, 0, false, Game1.player))
+                    {
+                        Game1.player.position.X += movementSpeed * Math.Abs(vector_AutoMove.X) / 2f;
+                        Game1.player.behaviorOnMovement(1);
+                    }
+                    else if (Game1.player.movementDirections.Count == 1)
+                    {
+                        Rectangle tmp3 = Game1.player.nextPosition(1);
+                        tmp3.Height /= 4;
+                        bool topCorner = currentLocation.isCollidingPosition(tmp3, viewport, true, 0, false, Game1.player);
+                        tmp3.Y += tmp3.Height * 3;
+                        bool bottomCorner = currentLocation.isCollidingPosition(tmp3, viewport, true, 0, false, Game1.player);
+                        if (topCorner && !bottomCorner && !currentLocation.isCollidingPosition(Game1.player.nextPosition(2), viewport, true, 0, false, Game1.player))
+                        {
+                            Game1.player.position.Y += (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
+                        }
+                        else if (bottomCorner && !topCorner && !currentLocation.isCollidingPosition(Game1.player.nextPosition(0), viewport, true, 0, false, Game1.player))
+                        {
+                            Game1.player.position.Y -= (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
+                        }
+                    }
+                }
+                if (Game1.player.movementDirections.Contains(3))
+                {
+                    Warp warp4 = Game1.currentLocation.isCollidingWithWarp(Game1.player.nextPosition(3));
+                    if (warp4 != null && Game1.player.IsLocalPlayer)
+                    {
+                        Game1.player.warpFarmer(warp4);
+                        return;
+                    }
+                    if (!currentLocation.isCollidingPosition(Game1.player.nextPosition(3), viewport, true, 0, false, Game1.player))
+                    {
+                        Game1.player.position.X -= movementSpeed * Math.Abs(vector_AutoMove.X);
+                        Game1.player.behaviorOnMovement(3);
+                    }
+                    else if (!currentLocation.isCollidingPosition(Game1.player.nextPositionHalf(3), viewport, true, 0, false, Game1.player))
+                    {
+                        Game1.player.position.X -= movementSpeed * Math.Abs(vector_AutoMove.X) / 2f;
+                        Game1.player.behaviorOnMovement(3);
+                    }
+                    else if (Game1.player.movementDirections.Count == 1)
+                    {
+                        Rectangle tmp4 = Game1.player.nextPosition(3);
+                        tmp4.Height /= 4;
+                        bool topCorner2 = currentLocation.isCollidingPosition(tmp4, viewport, true, 0, false, Game1.player);
+                        tmp4.Y += tmp4.Height * 3;
+                        bool bottomCorner2 = currentLocation.isCollidingPosition(tmp4, viewport, true, 0, false, Game1.player);
+                        if (topCorner2 && !bottomCorner2 && !currentLocation.isCollidingPosition(Game1.player.nextPosition(2), viewport, true, 0, false, Game1.player))
+                        {
+                            Game1.player.position.Y += (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
+                        }
+                        else if (bottomCorner2 && !topCorner2 && !currentLocation.isCollidingPosition(Game1.player.nextPosition(0), viewport, true, 0, false, Game1.player))
+                        {
+                            Game1.player.position.Y -= (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
+                        }
+                    }
+                }
+
+                if (Game1.player.movementDirections.Count == 2)
+                {
+                    if (Math.Abs(vector_AutoMove.Y / vector_AutoMove.X).CompareTo(0.45f) < 0)
+                    {
+                        Game1.player.SetMovingDown(false);
+                        Game1.player.SetMovingUp(false);
+                    }
+                    else if (Math.Abs(vector_AutoMove.Y) > Math.Sin(Math.PI / 3))
+                    {
+                        Game1.player.SetMovingRight(false);
+                        Game1.player.SetMovingLeft(false);
+                    }
+                }
+            }
+
+            if (Game1.player.movementDirections.Count > 0 && !Game1.player.UsingTool)
+            {
+                Game1.player.FarmerSprite.intervalModifier = 1f - (Game1.player.running ? 0.03f : 0.025f) * (Math.Max(1f, ((float)Game1.player.speed + (Game1.eventUp ? 0f : ((float)Game1.player.addedSpeed + (Game1.player.isRidingHorse() ? 4.6f : 0f)))) * Game1.player.movementMultiplier * (float)Game1.currentGameTime.ElapsedGameTime.Milliseconds) * 1.25f);
+            }
+            else
+            {
+                Game1.player.FarmerSprite.intervalModifier = 1f;
+            }
+            if (Game1.player.temporarilyInvincible)
+            {
+                Game1.player.temporaryInvincibilityTimer += time.ElapsedGameTime.Milliseconds;
+                if (Game1.player.temporaryInvincibilityTimer > 1200)
+                {
+                    Game1.player.temporarilyInvincible = false;
+                    Game1.player.temporaryInvincibilityTimer = 0;
+                }
+            }
+            if (currentLocation != null && currentLocation.isFarmerCollidingWithAnyCharacter())
+            {
+                Game1.player.temporaryImpassableTile = new Rectangle((int)Game1.player.getTileLocation().X * 64, (int)Game1.player.getTileLocation().Y * 64, 64, 64);
+            }
+        }
+
+    }
 }
 
