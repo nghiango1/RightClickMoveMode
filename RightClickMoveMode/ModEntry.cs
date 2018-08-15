@@ -6,12 +6,15 @@ using Harmony;
 using Microsoft.Xna.Framework;
 using System.Reflection;
 using StardewValley.Objects;
+using StardewValley.Tools;
 
 namespace RightClickMoveMode
 {
     public class ModConfig
     {
         public String RightClickMoveModeDefault { get; set; } = "On";
+        public String WeaponsSpecticalInteraction { get; set; } = "Disable";
+        public String HoldingMoveOnly { get; set; } = "Enable";
         public String ExtendedModeDefault { get; set; } = "On";
         public String RightClickMoveModeOpenButton { get; set; } = "G";
         public String ExtendedModeOpenButton { get; set; } = "H";
@@ -25,6 +28,8 @@ namespace RightClickMoveMode
 
         public static bool isRightClickMoveModeOn = true;
         public static bool isExtendedModeOn = true;
+        public static bool isWeaponsSpecticalInteraction = true;
+        public static bool isHoldingMoveOnly = true;
         
         public static bool isMovingAutomaticaly = false;  
         public static bool isBeingAutoCommand = false; 
@@ -40,6 +45,9 @@ namespace RightClickMoveMode
         public static bool isWheeling = false;
 
         public static bool isDone = false;
+
+        public static StardewValley.Object pointedObject = null;
+        public static StardewValley.Object pointedObjectDebug = null;
 
         private String RightClickMoveModeOpenButton;
 
@@ -79,6 +87,8 @@ namespace RightClickMoveMode
 
             isRightClickMoveModeOn = this.config.RightClickMoveModeDefault.ToUpper() == "ON";
             isExtendedModeOn = this.config.ExtendedModeDefault.ToUpper() == "ON";
+            isWeaponsSpecticalInteraction = !(this.config.WeaponsSpecticalInteraction.ToUpper() == "DISABLE");
+            isHoldingMoveOnly = this.config.HoldingMoveOnly.ToUpper() == "ENABLE";
 
             position_MouseOnScreen = new Vector2(0f, 0f);
             position_Source = new Vector2(0f, 0f);
@@ -115,9 +125,13 @@ namespace RightClickMoveMode
                         if (isHoldingMove)
                         {
                             isMovingAutomaticaly = true;
-                            
-                            grabTile = new Vector2((float)(Game1.getOldMouseX() + Game1.viewport.X), (float)(Game1.getOldMouseY() + Game1.viewport.Y)) / 64f;
-                            
+
+                            grabTile = Game1.currentCursorTile;
+                            if (Game1.player.currentLocation.getObjectAtTile((int)grabTile.X, (int)grabTile.Y) != null)
+                                pointedObject = Game1.player.currentLocation.getObjectAtTile((int)grabTile.X, (int)grabTile.Y);
+                            else
+                                pointedObject = null;
+
                             if (isBeingControl)
                             {
                                 if (tickCount == 0)
@@ -131,13 +145,29 @@ namespace RightClickMoveMode
                         }
                         else
                         {
-                            vector_PlayerToDestination.X = position_Destination.X - Game1.player.Position.X - 32f;
-                            vector_PlayerToDestination.Y = position_Destination.Y - Game1.player.Position.Y - 10f;
+                            if (isHoldingMoveOnly)
+                            {
+                                isMovingAutomaticaly = false;
+                            }
+                            else
+                            {
+                                vector_PlayerToDestination.X = position_Destination.X - Game1.player.Position.X - 32f;
+                                vector_PlayerToDestination.Y = position_Destination.Y - Game1.player.Position.Y - 10f;
+                            }
                         }
 
                         vector_PlayerToMouse.X = position_MouseOnScreen.X + Game1.viewport.X - Game1.player.Position.X - 32f;
                         vector_PlayerToMouse.Y = position_MouseOnScreen.Y + Game1.viewport.Y - Game1.player.Position.Y - 10f;
                         
+                    }
+
+                    if (pointedObjectDebug != pointedObject)
+                    {
+                        pointedObjectDebug = pointedObject;
+                        if (pointedObject  == null)
+                            base.Monitor.Log(String.Format("pointedObject = null"));
+                        else
+                            base.Monitor.Log(String.Format("pointedObject = {0}", pointedObject.DisplayName));
                     }
                 }
             }
@@ -147,6 +177,27 @@ namespace RightClickMoveMode
         private void PlayerEvents_Warped(object sender, EventArgsPlayerWarped e)
         {
             isMovingAutomaticaly = false;
+        }
+
+        private int SpecialCooldown(MeleeWeapon currentWeapon)
+        {
+            if (currentWeapon.type == 3)
+            {
+                return MeleeWeapon.defenseCooldown;
+            }
+            if (currentWeapon.type == 1)
+            {
+                return MeleeWeapon.daggerCooldown;
+            }
+            if (currentWeapon.type == 2)
+            {
+                return MeleeWeapon.clubCooldown;
+            }
+            if (currentWeapon.type == 0)
+            {
+                return MeleeWeapon.attackSwordCooldown;
+            }
+            return 0;
         }
 
         private void InputEvents_ButtonPressed(object sender, EventArgsInput e)
@@ -201,18 +252,32 @@ namespace RightClickMoveMode
                         flag2 = false;
                     }
                 }
+
+                if (!isWeaponsSpecticalInteraction)
+                {
+                    if (Game1.player.CurrentTool != null && Game1.player.CurrentTool is MeleeWeapon && SpecialCooldown((MeleeWeapon)Game1.player.CurrentTool) <= 0)
+                        flag2 = false;
+                }
+
                 if (flag2)
                 {
                     ModEntry.isMovingAutomaticaly = true;
                     isHoldingMove = true;
                     isBeingControl = false;
                     isMouseOutsiteHitBox = vector_PlayerToMouse.Length().CompareTo(hitboxRadius) > 0;
+
+                    grabTile = new Vector2((float)(position_MouseOnScreen.X + Game1.viewport.X), (float)(position_MouseOnScreen.Y + Game1.viewport.Y)) / 64f;
+
+                    if (Game1.player.currentLocation.getObjectAtTile((int)grabTile.X, (int)grabTile.Y) != null)
+                        pointedObject = Game1.player.currentLocation.getObjectAtTile((int)grabTile.X, (int)grabTile.Y);
+                    else
+                        pointedObject = null;
+
+                    isDone = false;
+
                     bool flag3 = false;
                     flag3 = flag3 || isMouseOutsiteHitBox;
                     
-                    grabTile = new Vector2((float)(Game1.getOldMouseX() + Game1.viewport.X), (float)(Game1.getOldMouseY() + Game1.viewport.Y)) / 64f;
-                    isDone = false;
-
                     if (flag3)
                     {
                         e.SuppressButton();
@@ -316,8 +381,13 @@ namespace RightClickMoveMode
 
                         vector_PlayerToDestination.X = position_Destination.X - Game1.player.Position.X - 32f;
                         vector_PlayerToDestination.Y = position_Destination.Y - Game1.player.Position.Y - 10f;
-                        
-                        grabTile = new Vector2((float)(Game1.getOldMouseX() + Game1.viewport.X), (float)(Game1.getOldMouseY() + Game1.viewport.Y)) / 64f;
+
+                        grabTile = new Vector2((float)(position_MouseOnScreen.X + Game1.viewport.X), (float)(position_MouseOnScreen.Y + Game1.viewport.Y)) / 64f;
+
+                        if (Game1.player.currentLocation.getObjectAtTile((int)grabTile.X, (int)grabTile.Y) != null)
+                            pointedObject = Game1.player.currentLocation.getObjectAtTile((int)grabTile.X, (int)grabTile.Y);
+                        else
+                            pointedObject = null;
                     }
                 }
             }
@@ -328,7 +398,7 @@ namespace RightClickMoveMode
             bool flag = ModEntry.isMovingAutomaticaly;
             bool flag2 = false;
             bool flag3 = false;
-            
+
             if (flag)
             {
 
@@ -371,6 +441,7 @@ namespace RightClickMoveMode
                         }
                     }
                 }
+
                 Game1.player.movementDirections.Clear();
                 if (vector_AutoMove.X <= 5 && vector_AutoMove.X >= -5)
                     flag2 = true;
@@ -402,6 +473,15 @@ namespace RightClickMoveMode
                     }
                 }
 
+                //if (pointedObject != null && !isDone)
+                //{
+                //    if (pointedObject.isActionable(Game1.player))
+                //    {
+                //        isDone = true;
+                //        pointedObject.checkForAction(Game1.player);
+                //        //public static bool canGrabSomethingFromHere(int x, int y, Farmer who)
+                //    }
+                //}
                 if (flag2 && flag3)
                 {
                     if (!isDone)
