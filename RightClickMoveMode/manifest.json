@@ -1,10 +1,10 @@
 ﻿{
   "Author": "ylsama",
-  "Description": "A simple enchancement for game controls that allow player move your Farmmer by Mouse",
-  "EntryDll": "RightClickMoveMode.dll",
+  "Description": "Allow player move your Farmmer though object by Mouse",
+  "EntryDll": "MoveThoughObject.dll",
   "MinimumApiVersion": "2.6",
-  "Name": "RightClickMoveMode",
-  "UniqueID": "ylsama.RightClickMoveMode",
-  "UpdateKeys": [ "Nexus:2614", "Github:ylsama/RightClickMoveMode" ],
-  "Version": "1.1.5"
+  "Name": "MoveThoughObject",
+  "UniqueID": "ylsama.MoveThoughObject",
+  "UpdateKeys": [ "Github:ylsama/RightClickMoveMode" ],
+  "Version": "1.0"
 }

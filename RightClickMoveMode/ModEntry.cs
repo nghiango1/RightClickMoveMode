@@ -8,11 +8,11 @@ using System.Reflection;
 using StardewValley.Objects;
 using StardewValley.Tools;
 
-namespace RightClickMoveMode
+namespace MoveThoughObject
 {
     public class ModConfig
     {
-        public String RightClickMoveModeDefault { get; set; } = "On";
+        public String RightClickMoveModeDefault { get; set; } = "Off";
         public String WeaponsSpecticalInteraction { get; set; } = "Enable";
         public String WeaponsSpecticalInteractionType { get; set; } = "Disable";
         public String HoldingMoveOnly { get; set; } = "Disable";
@@ -638,22 +638,26 @@ namespace RightClickMoveMode
                         Game1.player.position.Y -= movementSpeed * Math.Abs(vector_AutoMove.Y) / 2f;
                         Game1.player.behaviorOnMovement(0);
                     }
-                    else if (Game1.player.movementDirections.Count == 1)
+                    else
                     {
-                        Rectangle tmp = Game1.player.nextPosition(0);
-                        tmp.Width /= 4;
-                        bool leftCorner = currentLocation.isCollidingPosition(tmp, viewport, true, 0, false, Game1.player);
-                        tmp.X += tmp.Width * 3;
-                        bool rightCorner = currentLocation.isCollidingPosition(tmp, viewport, true, 0, false, Game1.player);
-                        if (leftCorner && !rightCorner && !currentLocation.isCollidingPosition(Game1.player.nextPosition(1), viewport, true, 0, false, Game1.player))
-                        {
-                            Game1.player.position.X += (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
-                        }
-                        else if (rightCorner && !leftCorner && !currentLocation.isCollidingPosition(Game1.player.nextPosition(3), viewport, true, 0, false, Game1.player))
-                        {
-                            Game1.player.position.X -= (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
-                        }
+                        Game1.player.position.Y -= movementSpeed * Math.Min (0.7f , Math.Abs(vector_AutoMove.Y));
                     }
+                    //else if (Game1.player.movementDirections.Count == 1)
+                    //{
+                    //    Rectangle tmp = Game1.player.nextPosition(0);
+                    //    tmp.Width /= 4;
+                    //    bool leftCorner = currentLocation.isCollidingPosition(tmp, viewport, true, 0, false, Game1.player);
+                    //    tmp.X += tmp.Width * 3;
+                    //    bool rightCorner = currentLocation.isCollidingPosition(tmp, viewport, true, 0, false, Game1.player);
+                    //    if (leftCorner && !rightCorner && !currentLocation.isCollidingPosition(Game1.player.nextPosition(1), viewport, true, 0, false, Game1.player))
+                    //    {
+                    //        Game1.player.position.X += (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
+                    //    }
+                    //    else if (rightCorner && !leftCorner && !currentLocation.isCollidingPosition(Game1.player.nextPosition(3), viewport, true, 0, false, Game1.player))
+                    //    {
+                    //        Game1.player.position.X -= (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
+                    //    }
+                    //}
                 }
                 if (Game1.player.movementDirections.Contains(2))
                 {
@@ -673,22 +677,26 @@ namespace RightClickMoveMode
                         Game1.player.position.Y += movementSpeed * Math.Abs(vector_AutoMove.Y) / 2f;
                         Game1.player.behaviorOnMovement(2);
                     }
-                    else if (Game1.player.movementDirections.Count == 1)
+                    else
                     {
-                        Rectangle tmp2 = Game1.player.nextPosition(2);
-                        tmp2.Width /= 4;
-                        bool leftCorner2 = currentLocation.isCollidingPosition(tmp2, viewport, true, 0, false, Game1.player);
-                        tmp2.X += tmp2.Width * 3;
-                        bool rightCorner2 = currentLocation.isCollidingPosition(tmp2, viewport, true, 0, false, Game1.player);
-                        if (leftCorner2 && !rightCorner2 && !currentLocation.isCollidingPosition(Game1.player.nextPosition(1), viewport, true, 0, false, Game1.player))
-                        {
-                            Game1.player.position.X += (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
-                        }
-                        else if (rightCorner2 && !leftCorner2 && !currentLocation.isCollidingPosition(Game1.player.nextPosition(3), viewport, true, 0, false, Game1.player))
-                        {
-                            Game1.player.position.X -= (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
-                        }
+                        Game1.player.position.Y += movementSpeed * Math.Min(0.7f, Math.Abs(vector_AutoMove.Y));
                     }
+                    //else if (Game1.player.movementDirections.Count == 1)
+                    //{
+                    //    Rectangle tmp2 = Game1.player.nextPosition(2);
+                    //    tmp2.Width /= 4;
+                    //    bool leftCorner2 = currentLocation.isCollidingPosition(tmp2, viewport, true, 0, false, Game1.player);
+                    //    tmp2.X += tmp2.Width * 3;
+                    //    bool rightCorner2 = currentLocation.isCollidingPosition(tmp2, viewport, true, 0, false, Game1.player);
+                    //    if (leftCorner2 && !rightCorner2 && !currentLocation.isCollidingPosition(Game1.player.nextPosition(1), viewport, true, 0, false, Game1.player))
+                    //    {
+                    //        Game1.player.position.X += (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
+                    //    }
+                    //    else if (rightCorner2 && !leftCorner2 && !currentLocation.isCollidingPosition(Game1.player.nextPosition(3), viewport, true, 0, false, Game1.player))
+                    //    {
+                    //        Game1.player.position.X -= (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
+                    //    }
+                    //}
                 }
                 if (Game1.player.movementDirections.Contains(1))
                 {
@@ -708,22 +716,26 @@ namespace RightClickMoveMode
                         Game1.player.position.X += movementSpeed * Math.Abs(vector_AutoMove.X) / 2f;
                         Game1.player.behaviorOnMovement(1);
                     }
-                    else if (Game1.player.movementDirections.Count == 1)
+                    else
                     {
-                        Rectangle tmp3 = Game1.player.nextPosition(1);
-                        tmp3.Height /= 4;
-                        bool topCorner = currentLocation.isCollidingPosition(tmp3, viewport, true, 0, false, Game1.player);
-                        tmp3.Y += tmp3.Height * 3;
-                        bool bottomCorner = currentLocation.isCollidingPosition(tmp3, viewport, true, 0, false, Game1.player);
-                        if (topCorner && !bottomCorner && !currentLocation.isCollidingPosition(Game1.player.nextPosition(2), viewport, true, 0, false, Game1.player))
-                        {
-                            Game1.player.position.Y += (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
-                        }
-                        else if (bottomCorner && !topCorner && !currentLocation.isCollidingPosition(Game1.player.nextPosition(0), viewport, true, 0, false, Game1.player))
-                        {
-                            Game1.player.position.Y -= (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
-                        }
+                        Game1.player.position.X += movementSpeed * Math.Min(0.7f, Math.Abs(vector_AutoMove.X));
                     }
+                    //else if (Game1.player.movementDirections.Count == 1)
+                    //{
+                    //    Rectangle tmp3 = Game1.player.nextPosition(1);
+                    //    tmp3.Height /= 4;
+                    //    bool topCorner = currentLocation.isCollidingPosition(tmp3, viewport, true, 0, false, Game1.player);
+                    //    tmp3.Y += tmp3.Height * 3;
+                    //    bool bottomCorner = currentLocation.isCollidingPosition(tmp3, viewport, true, 0, false, Game1.player);
+                    //    if (topCorner && !bottomCorner && !currentLocation.isCollidingPosition(Game1.player.nextPosition(2), viewport, true, 0, false, Game1.player))
+                    //    {
+                    //        Game1.player.position.Y += (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
+                    //    }
+                    //    else if (bottomCorner && !topCorner && !currentLocation.isCollidingPosition(Game1.player.nextPosition(0), viewport, true, 0, false, Game1.player))
+                    //    {
+                    //        Game1.player.position.Y -= (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
+                    //    }
+                    //}
                 }
                 if (Game1.player.movementDirections.Contains(3))
                 {
@@ -743,22 +755,26 @@ namespace RightClickMoveMode
                         Game1.player.position.X -= movementSpeed * Math.Abs(vector_AutoMove.X) / 2f;
                         Game1.player.behaviorOnMovement(3);
                     }
-                    else if (Game1.player.movementDirections.Count == 1)
+                    else
                     {
-                        Rectangle tmp4 = Game1.player.nextPosition(3);
-                        tmp4.Height /= 4;
-                        bool topCorner2 = currentLocation.isCollidingPosition(tmp4, viewport, true, 0, false, Game1.player);
-                        tmp4.Y += tmp4.Height * 3;
-                        bool bottomCorner2 = currentLocation.isCollidingPosition(tmp4, viewport, true, 0, false, Game1.player);
-                        if (topCorner2 && !bottomCorner2 && !currentLocation.isCollidingPosition(Game1.player.nextPosition(2), viewport, true, 0, false, Game1.player))
-                        {
-                            Game1.player.position.Y += (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
-                        }
-                        else if (bottomCorner2 && !topCorner2 && !currentLocation.isCollidingPosition(Game1.player.nextPosition(0), viewport, true, 0, false, Game1.player))
-                        {
-                            Game1.player.position.Y -= (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
-                        }
+                        Game1.player.position.X -= movementSpeed * Math.Min(0.7f, Math.Abs(vector_AutoMove.X));
                     }
+                    //else if (Game1.player.movementDirections.Count == 1)
+                    //{
+                    //    Rectangle tmp4 = Game1.player.nextPosition(3);
+                    //    tmp4.Height /= 4;
+                    //    bool topCorner2 = currentLocation.isCollidingPosition(tmp4, viewport, true, 0, false, Game1.player);
+                    //    tmp4.Y += tmp4.Height * 3;
+                    //    bool bottomCorner2 = currentLocation.isCollidingPosition(tmp4, viewport, true, 0, false, Game1.player);
+                    //    if (topCorner2 && !bottomCorner2 && !currentLocation.isCollidingPosition(Game1.player.nextPosition(2), viewport, true, 0, false, Game1.player))
+                    //    {
+                    //        Game1.player.position.Y += (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
+                    //    }
+                    //    else if (bottomCorner2 && !topCorner2 && !currentLocation.isCollidingPosition(Game1.player.nextPosition(0), viewport, true, 0, false, Game1.player))
+                    //    {
+                    //        Game1.player.position.Y -= (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
+                    //    }
+                    //}
                 }
 
                 if (Game1.player.movementDirections.Count == 2)
