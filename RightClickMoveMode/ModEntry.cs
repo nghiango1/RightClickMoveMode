@@ -1,12 +1,12 @@
-﻿using System;
-using StardewValley;
+﻿using Harmony;
+using Microsoft.Xna.Framework;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
-using Harmony;
-using Microsoft.Xna.Framework;
-using System.Reflection;
+using StardewValley;
 using StardewValley.Objects;
 using StardewValley.Tools;
+using System;
+using System.Reflection;
 
 namespace RightClickMoveMode
 {
@@ -31,9 +31,9 @@ namespace RightClickMoveMode
         public static bool isExtendedModeOn = true;
         public static bool isWeaponsSpecticalInteraction = true;
         public static bool isHoldingMoveOnly = true;
-        
-        public static bool isMovingAutomaticaly = false;  
-        public static bool isBeingAutoCommand = false; 
+
+        public static bool isMovingAutomaticaly = false;
+        public static bool isBeingAutoCommand = false;
         public static bool isMouseOutsiteHitBox = false;
 
         public static bool isBeingControl = false;
@@ -54,9 +54,9 @@ namespace RightClickMoveMode
 
         private String ExtendedModeOpenButton;
 
-        private static Vector2 vector_PlayerToDestination;  
+        private static Vector2 vector_PlayerToDestination;
         private static Vector2 vector_PlayerToMouse;
-        private static Vector2 vector_AutoMove; 
+        private static Vector2 vector_AutoMove;
 
         private static Vector2 position_MouseOnScreen;
         private static Vector2 position_Source;
@@ -65,10 +65,11 @@ namespace RightClickMoveMode
         private static Vector2 grabTile;
 
         private static int tickCount = 15;
+        private static int HoldCount = 15;
         private static int stuckCount = 30;
 
         private static int currentToolIndex = 1;
-        
+
         public static bool isDebugMode = false;
 
         public override void Entry(IModHelper helper)
@@ -91,11 +92,12 @@ namespace RightClickMoveMode
             isWeaponsSpecticalInteraction = !(this.config.WeaponsSpecticalInteraction.ToUpper() == "DISABLE");
             isHoldingMoveOnly = this.config.HoldingMoveOnly.ToUpper() == "ENABLE";
 
+
             position_MouseOnScreen = new Vector2(0f, 0f);
             position_Source = new Vector2(0f, 0f);
             vector_PlayerToDestination = new Vector2(0f, 0f);
         }
-        
+
 
 
         private void GameEvents_UpdateTick(object sender, EventArgs e)
@@ -110,7 +112,6 @@ namespace RightClickMoveMode
                         Game1.player.CurrentToolIndex = currentToolIndex;
                     }
                 }
-
                 if (isRightClickMoveModeOn)
                 {
                     if (Context.IsPlayerFree)
@@ -159,13 +160,13 @@ namespace RightClickMoveMode
 
                         vector_PlayerToMouse.X = position_MouseOnScreen.X + Game1.viewport.X - Game1.player.Position.X - 32f;
                         vector_PlayerToMouse.Y = position_MouseOnScreen.Y + Game1.viewport.Y - Game1.player.Position.Y - 10f;
-                        
+
                     }
 
                     if (pointedObjectDebug != pointedObject)
                     {
                         pointedObjectDebug = pointedObject;
-                        if (pointedObject  == null)
+                        if (pointedObject == null)
                             base.Monitor.Log(String.Format("pointedObject = null"));
                         else
                             base.Monitor.Log(String.Format("pointedObject = {0}", pointedObject.DisplayName));
@@ -205,7 +206,7 @@ namespace RightClickMoveMode
         {
             bool flag = Context.IsWorldReady;
             string button = e.Button.ToString();
-            
+
             if (button == RightClickMoveModeOpenButton)
             {
                 isRightClickMoveModeOn = !isRightClickMoveModeOn;
@@ -276,7 +277,7 @@ namespace RightClickMoveMode
 
                     bool flag3 = false;
                     flag3 = flag3 || isMouseOutsiteHitBox;
-                    
+
                     if (flag3)
                     {
                         e.SuppressButton();
@@ -396,7 +397,7 @@ namespace RightClickMoveMode
                 }
             }
         }
-        
+
         public static void MoveVectorToCommand()
         {
             bool flag = ModEntry.isMovingAutomaticaly;
@@ -493,21 +494,22 @@ namespace RightClickMoveMode
         {
             HarmonyInstance newHarmony = HarmonyInstance.Create("ylsama.RightClickMoveMode");
 
-            MethodInfo farmeHaltrInfo = AccessTools.Method(typeof(Farmer), "Halt");
+            MethodInfo farmer_Halt_Info = AccessTools.Method(typeof(Farmer), "Halt");
+            MethodInfo farmer_Halt_PrefixPatch = AccessTools.Method(typeof(ModEntry), "PrefixMethod_FarmerPatch");
+            newHarmony.Patch(farmer_Halt_Info, new HarmonyMethod(farmer_Halt_PrefixPatch));
 
-            MethodInfo farmerMovePositionInfo = AccessTools.Method(typeof(Farmer), "MovePosition", new Type[] { typeof(GameTime), typeof(xTile.Dimensions.Rectangle), typeof(GameLocation) });
 
-            MethodInfo farmerHaltPrefix = AccessTools.Method(typeof(ModEntry), "PrefixMethod_FarmerPatch");
+            MethodInfo farmer_getMovementSpeed_Info = AccessTools.Method(typeof(Farmer), "getMovementSpeed");
+            MethodInfo farmer_getMovementSpeed_PrefixPatch = AccessTools.Method(typeof(ModEntry), "PrefixMethod_Farmer_getMovementSpeedPatch");
+            newHarmony.Patch(farmer_getMovementSpeed_Info, new HarmonyMethod(farmer_getMovementSpeed_PrefixPatch));
 
-            MethodInfo game1Info = AccessTools.Method(typeof(Game1), "UpdateControlInput", new Type[] { typeof(GameTime) });
+            MethodInfo farmer_MovePosition_Info = AccessTools.Method(typeof(Farmer), "MovePosition", new Type[] { typeof(GameTime), typeof(xTile.Dimensions.Rectangle), typeof(GameLocation) });
+            MethodInfo farmer_MovePosition_PrefixPatch = AccessTools.Method(typeof(ModEntry), "PrefixMethod_FarmerMovePositionPatch");
+            newHarmony.Patch(farmer_MovePosition_Info, new HarmonyMethod(farmer_MovePosition_PrefixPatch));
 
-            MethodInfo game1HaltPostfix = AccessTools.Method(typeof(ModEntry), "PostfixMethod_Game1Patch");
-
-            MethodInfo farmerMovePositionPrefix = AccessTools.Method(typeof(ModEntry), "PrefixMethod_FarmerMovePositionPatch");
-
-            newHarmony.Patch(farmeHaltrInfo, new HarmonyMethod(farmerHaltPrefix));
-            newHarmony.Patch(game1Info, null, new HarmonyMethod(game1HaltPostfix));
-            newHarmony.Patch(farmerMovePositionInfo, new HarmonyMethod(farmerMovePositionPrefix));
+            MethodInfo game1_UpdateControlInput_Info = AccessTools.Method(typeof(Game1), "UpdateControlInput", new Type[] { typeof(GameTime) });
+            MethodInfo game1_UpdateControlInput_PostfixPatch = AccessTools.Method(typeof(ModEntry), "PostfixMethod_Game1Patch");
+            newHarmony.Patch(game1_UpdateControlInput_Info, null, new HarmonyMethod(game1_UpdateControlInput_PostfixPatch));
         }
 
         public static bool PrefixMethod_FarmerPatch(Game1 __instance)
@@ -552,6 +554,30 @@ namespace RightClickMoveMode
             }
         }
 
+        public static bool PrefixMethod_Farmer_getMovementSpeedPatch(Farmer __instance, ref float __result)
+        {
+            if (isRightClickMoveModeOn)
+            {
+                if (!isBeingControl && Context.IsPlayerFree)
+                {
+
+                    float movementSpeed;
+                    if (Game1.CurrentEvent == null || Game1.CurrentEvent.playerControlSequence)
+                    {
+                        Game1.player.movementMultiplier = 0.066f;
+                        movementSpeed = Math.Max(1f, ((float)Game1.player.speed + (Game1.eventUp ? 0f : ((float)Game1.player.addedSpeed + (Game1.player.isRidingHorse() ? 4.6f : Game1.player.temporarySpeedBuff)))) * Game1.player.movementMultiplier * (float)Game1.currentGameTime.ElapsedGameTime.Milliseconds);
+                    }
+                    else
+                    {
+                        movementSpeed = Math.Max(1f, (float)Game1.player.speed + (Game1.eventUp ? ((float)Math.Max(0, Game1.CurrentEvent.farmerAddedSpeed - 2)) : ((float)Game1.player.addedSpeed + (Game1.player.isRidingHorse() ? 5f : Game1.player.temporarySpeedBuff))));
+                    }
+                    __result = movementSpeed;
+                    return false;
+                }
+            }
+            return true;
+        }
+
         public static void MovePosition(GameTime time, xTile.Dimensions.Rectangle viewport, GameLocation currentLocation)
         {
             if (Game1.player.xVelocity != 0f || Game1.player.yVelocity != 0f)
@@ -584,7 +610,7 @@ namespace RightClickMoveMode
                     }
                 }
                 else
-                {
+                {   
                     Game1.player.xVelocity -= Game1.player.xVelocity / 16f;
                     Game1.player.yVelocity -= Game1.player.yVelocity / 16f;
                     if (Math.Abs(Game1.player.xVelocity) <= 0.05f)
@@ -604,178 +630,21 @@ namespace RightClickMoveMode
                 {
                     Game1.player.temporaryImpassableTile = Rectangle.Empty;
                 }
-                
+
                 float movementSpeed = Game1.player.getMovementSpeed();
                 Game1.player.temporarySpeedBuff = 0f;
 
-                if (Game1.player.movementDirections.Count > 1)
-                {
-                    if (Game1.CurrentEvent == null || Game1.CurrentEvent.playerControlSequence)
-                    {
-                        movementSpeed /= 0.7f;
-                    }
-                    else
-                    {
-                        movementSpeed = (float)Math.Max(1, movementSpeed);
-                    }
-                }
-                
                 if (Game1.player.movementDirections.Contains(0))
-                {
-                    Warp warp = Game1.currentLocation.isCollidingWithWarp(Game1.player.nextPosition(0));
-                    if (warp != null && Game1.player.IsLocalPlayer)
-                    {
-                        Game1.player.warpFarmer(warp);
-                        return;
-                    }
-                    if (!currentLocation.isCollidingPosition(Game1.player.nextPosition(0), viewport, true, 0, false, Game1.player))
-                    {
-                        Game1.player.position.Y -= movementSpeed * Math.Abs(vector_AutoMove.Y);
-                        Game1.player.behaviorOnMovement(0);
-                    }
-                    else if (!currentLocation.isCollidingPosition(Game1.player.nextPositionHalf(0), viewport, true, 0, false, Game1.player))
-                    {
-                        Game1.player.position.Y -= movementSpeed * Math.Abs(vector_AutoMove.Y) / 2f;
-                        Game1.player.behaviorOnMovement(0);
-                    }
-                    else
-                    {
-                        Game1.player.position.Y -= movementSpeed * Math.Min (0.7f , Math.Abs(vector_AutoMove.Y));
-                    }
-                    //else if (Game1.player.movementDirections.Count == 1)
-                    //{
-                    //    Rectangle tmp = Game1.player.nextPosition(0);
-                    //    tmp.Width /= 4;
-                    //    bool leftCorner = currentLocation.isCollidingPosition(tmp, viewport, true, 0, false, Game1.player);
-                    //    tmp.X += tmp.Width * 3;
-                    //    bool rightCorner = currentLocation.isCollidingPosition(tmp, viewport, true, 0, false, Game1.player);
-                    //    if (leftCorner && !rightCorner && !currentLocation.isCollidingPosition(Game1.player.nextPosition(1), viewport, true, 0, false, Game1.player))
-                    //    {
-                    //        Game1.player.position.X += (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
-                    //    }
-                    //    else if (rightCorner && !leftCorner && !currentLocation.isCollidingPosition(Game1.player.nextPosition(3), viewport, true, 0, false, Game1.player))
-                    //    {
-                    //        Game1.player.position.X -= (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
-                    //    }
-                    //}
-                }
+                    TryMoveDrection(time, viewport, currentLocation, 0);
+
                 if (Game1.player.movementDirections.Contains(2))
-                {
-                    Warp warp2 = Game1.currentLocation.isCollidingWithWarp(Game1.player.nextPosition(2));
-                    if (warp2 != null && Game1.player.IsLocalPlayer)
-                    {
-                        Game1.player.warpFarmer(warp2);
-                        return;
-                    }
-                    if (!currentLocation.isCollidingPosition(Game1.player.nextPosition(2), viewport, true, 0, false, Game1.player))
-                    {
-                        Game1.player.position.Y += movementSpeed * Math.Abs(vector_AutoMove.Y);
-                        Game1.player.behaviorOnMovement(2);
-                    }
-                    else if (!currentLocation.isCollidingPosition(Game1.player.nextPositionHalf(2), viewport, true, 0, false, Game1.player))
-                    {
-                        Game1.player.position.Y += movementSpeed * Math.Abs(vector_AutoMove.Y) / 2f;
-                        Game1.player.behaviorOnMovement(2);
-                    }
-                    else
-                    {
-                        Game1.player.position.Y += movementSpeed * Math.Min(0.7f, Math.Abs(vector_AutoMove.Y));
-                    }
-                    //else if (Game1.player.movementDirections.Count == 1)
-                    //{
-                    //    Rectangle tmp2 = Game1.player.nextPosition(2);
-                    //    tmp2.Width /= 4;
-                    //    bool leftCorner2 = currentLocation.isCollidingPosition(tmp2, viewport, true, 0, false, Game1.player);
-                    //    tmp2.X += tmp2.Width * 3;
-                    //    bool rightCorner2 = currentLocation.isCollidingPosition(tmp2, viewport, true, 0, false, Game1.player);
-                    //    if (leftCorner2 && !rightCorner2 && !currentLocation.isCollidingPosition(Game1.player.nextPosition(1), viewport, true, 0, false, Game1.player))
-                    //    {
-                    //        Game1.player.position.X += (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
-                    //    }
-                    //    else if (rightCorner2 && !leftCorner2 && !currentLocation.isCollidingPosition(Game1.player.nextPosition(3), viewport, true, 0, false, Game1.player))
-                    //    {
-                    //        Game1.player.position.X -= (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
-                    //    }
-                    //}
-                }
+                    TryMoveDrection(time, viewport, currentLocation, 2);
+
                 if (Game1.player.movementDirections.Contains(1))
-                {
-                    Warp warp3 = Game1.currentLocation.isCollidingWithWarp(Game1.player.nextPosition(1));
-                    if (warp3 != null && Game1.player.IsLocalPlayer)
-                    {
-                        Game1.player.warpFarmer(warp3);
-                        return;
-                    }
-                    if (!currentLocation.isCollidingPosition(Game1.player.nextPosition(1), viewport, true, 0, false, Game1.player))
-                    {
-                        Game1.player.position.X += movementSpeed * Math.Abs(vector_AutoMove.X);
-                        Game1.player.behaviorOnMovement(1);
-                    }
-                    else if (!currentLocation.isCollidingPosition(Game1.player.nextPositionHalf(1), viewport, true, 0, false, Game1.player))
-                    {
-                        Game1.player.position.X += movementSpeed * Math.Abs(vector_AutoMove.X) / 2f;
-                        Game1.player.behaviorOnMovement(1);
-                    }
-                    else
-                    {
-                        Game1.player.position.X += movementSpeed * Math.Min(0.7f, Math.Abs(vector_AutoMove.X));
-                    }
-                    //else if (Game1.player.movementDirections.Count == 1)
-                    //{
-                    //    Rectangle tmp3 = Game1.player.nextPosition(1);
-                    //    tmp3.Height /= 4;
-                    //    bool topCorner = currentLocation.isCollidingPosition(tmp3, viewport, true, 0, false, Game1.player);
-                    //    tmp3.Y += tmp3.Height * 3;
-                    //    bool bottomCorner = currentLocation.isCollidingPosition(tmp3, viewport, true, 0, false, Game1.player);
-                    //    if (topCorner && !bottomCorner && !currentLocation.isCollidingPosition(Game1.player.nextPosition(2), viewport, true, 0, false, Game1.player))
-                    //    {
-                    //        Game1.player.position.Y += (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
-                    //    }
-                    //    else if (bottomCorner && !topCorner && !currentLocation.isCollidingPosition(Game1.player.nextPosition(0), viewport, true, 0, false, Game1.player))
-                    //    {
-                    //        Game1.player.position.Y -= (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
-                    //    }
-                    //}
-                }
+                    TryMoveDrection(time, viewport, currentLocation, 1);
+
                 if (Game1.player.movementDirections.Contains(3))
-                {
-                    Warp warp4 = Game1.currentLocation.isCollidingWithWarp(Game1.player.nextPosition(3));
-                    if (warp4 != null && Game1.player.IsLocalPlayer)
-                    {
-                        Game1.player.warpFarmer(warp4);
-                        return;
-                    }
-                    if (!currentLocation.isCollidingPosition(Game1.player.nextPosition(3), viewport, true, 0, false, Game1.player))
-                    {
-                        Game1.player.position.X -= movementSpeed * Math.Abs(vector_AutoMove.X);
-                        Game1.player.behaviorOnMovement(3);
-                    }
-                    else if (!currentLocation.isCollidingPosition(Game1.player.nextPositionHalf(3), viewport, true, 0, false, Game1.player))
-                    {
-                        Game1.player.position.X -= movementSpeed * Math.Abs(vector_AutoMove.X) / 2f;
-                        Game1.player.behaviorOnMovement(3);
-                    }
-                    else
-                    {
-                        Game1.player.position.X -= movementSpeed * Math.Min(0.7f, Math.Abs(vector_AutoMove.X));
-                    }
-                    //else if (Game1.player.movementDirections.Count == 1)
-                    //{
-                    //    Rectangle tmp4 = Game1.player.nextPosition(3);
-                    //    tmp4.Height /= 4;
-                    //    bool topCorner2 = currentLocation.isCollidingPosition(tmp4, viewport, true, 0, false, Game1.player);
-                    //    tmp4.Y += tmp4.Height * 3;
-                    //    bool bottomCorner2 = currentLocation.isCollidingPosition(tmp4, viewport, true, 0, false, Game1.player);
-                    //    if (topCorner2 && !bottomCorner2 && !currentLocation.isCollidingPosition(Game1.player.nextPosition(2), viewport, true, 0, false, Game1.player))
-                    //    {
-                    //        Game1.player.position.Y += (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
-                    //    }
-                    //    else if (bottomCorner2 && !topCorner2 && !currentLocation.isCollidingPosition(Game1.player.nextPosition(0), viewport, true, 0, false, Game1.player))
-                    //    {
-                    //        Game1.player.position.Y -= (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
-                    //    }
-                    //}
-                }
+                    TryMoveDrection(time, viewport, currentLocation, 3);
 
                 if (Game1.player.movementDirections.Count == 2)
                 {
@@ -815,6 +684,109 @@ namespace RightClickMoveMode
             }
         }
 
+        public static int RightDirection(int faceDirection)
+        {
+            switch (faceDirection)
+            {
+                case 0:
+                    return 1;
+                case 1:
+                    return 2;
+                case 2:
+                    return 3;
+                case 3:
+                    return 0;
+                default:
+                    return -1;
+            }
+        }
+
+        public static int LeftDirection(int faceDirection)
+        {
+            switch (faceDirection)
+            {
+                case 0:
+                    return 3;
+                case 1:
+                    return 0;
+                case 2:
+                    return 1;
+                case 3:
+                    return 2;
+                default:
+                    return -1;
+            }
+        }
+        
+        public static void TryMoveDrection(GameTime time, xTile.Dimensions.Rectangle viewport, GameLocation currentLocation, int faceDirection)
+        {
+            Warp warp = Game1.currentLocation.isCollidingWithWarp(Game1.player.nextPosition(faceDirection));
+            if (warp != null && Game1.player.IsLocalPlayer)
+            {
+                Game1.player.warpFarmer(warp);
+                return;
+            }
+            float movementSpeed = Game1.player.getMovementSpeed();
+            if (Game1.player.movementDirections.Contains(faceDirection))
+            {
+                Rectangle nextPos = Game1.player.nextPosition(faceDirection);
+                //if (faceDirection == 0 || faceDirection == 2)
+                //    nextPos.Y += (int) Math.Ceiling(movementSpeed * vector_AutoMove.Y );
+                //else
+                //    nextPos.X += (int) Math.Ceiling(movementSpeed * vector_AutoMove.X  );
+
+                if (!currentLocation.isCollidingPosition(nextPos, viewport, true, 0, false, Game1.player))
+                {
+                    if (faceDirection == 0 || faceDirection == 2)
+                        Game1.player.position.Y += movementSpeed * vector_AutoMove.Y;
+                    else
+                        Game1.player.position.X += movementSpeed * vector_AutoMove.X;
+
+                    Game1.player.behaviorOnMovement(faceDirection);
+                }
+                else
+                {
+                    nextPos = Game1.player.nextPositionHalf(faceDirection);
+                    //if (faceDirection == 0 || faceDirection == 2)
+                    //    nextPos.X += (int)Math.Ceiling((movementSpeed * vector_AutoMove.Y / 2f));
+                    //else
+                    //    nextPos.Y += (int)Math.Ceiling((movementSpeed * vector_AutoMove.X / 2f));
+
+                    if (!currentLocation.isCollidingPosition(nextPos, viewport, true, 0, false, Game1.player))
+                    {
+
+                        if (faceDirection == 0 || faceDirection == 2)
+                            Game1.player.position.Y += movementSpeed * vector_AutoMove.Y / 2f;
+                        else
+                            Game1.player.position.X += movementSpeed * vector_AutoMove.X / 2f;
+
+                        Game1.player.behaviorOnMovement(faceDirection);
+                    }
+                    else if (Game1.player.movementDirections.Count == 1)
+                    {
+                        Rectangle tmp = Game1.player.nextPosition(faceDirection);
+                        tmp.Width /= 4;
+                        bool leftCorner = currentLocation.isCollidingPosition(tmp, viewport, true, 0, false, Game1.player);
+                        tmp.X += tmp.Width * 3;
+                        bool rightCorner = currentLocation.isCollidingPosition(tmp, viewport, true, 0, false, Game1.player);
+                        if (leftCorner && !rightCorner && !currentLocation.isCollidingPosition(Game1.player.nextPosition(LeftDirection(faceDirection)), viewport, true, 0, false, Game1.player))
+                        {
+                            if (faceDirection == 0 || faceDirection == 2)
+                                Game1.player.position.X += (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
+                            else
+                                Game1.player.position.Y += (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
+                        }
+                        else if (rightCorner && !leftCorner && !currentLocation.isCollidingPosition(Game1.player.nextPosition(RightDirection(faceDirection)), viewport, true, 0, false, Game1.player))
+                        {
+                            if (faceDirection == 0 || faceDirection == 2)
+                                Game1.player.position.X -= (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
+                            else
+                                Game1.player.position.Y -= (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
