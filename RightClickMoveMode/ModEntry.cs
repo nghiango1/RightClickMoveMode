@@ -4,22 +4,24 @@ using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
 using StardewValley.Objects;
+using StardewValley.TerrainFeatures;
 using StardewValley.Tools;
 using System;
+using System.Collections.Generic;
 using System.Reflection;
+using xTile.ObjectModel;
 
 namespace RightClickMoveMode
 {
     public class ModConfig
     {
-        public String RightClickMoveModeDefault { get; set; } = "On";
         public String ExtendedModeDefault { get; set; } = "On";
+        public String RightClickMoveModeDefault { get; set; } = "On";
+        public String RightClickMoveModeToggleButton { get; set; } = "G";
+        public String HoldingMoveOnly { get; set; } = "Disable";
 
         public String WeaponsSpecticalInteraction { get; set; } = "Enable";
         public int WeaponsSpecticalInteractionType { get; set; } = 1;
-
-        public String HoldingMoveOnly { get; set; } = "Disable";
-        public String RightClickMoveModeToggleButton { get; set; } = "G";
     }
 
     public class ModEntry : Mod
@@ -50,13 +52,10 @@ namespace RightClickMoveMode
         public static bool isWheeling = false;
         
         public static int isDone = 0;
-
-        public static StardewValley.Object pointedObject = null;
-        public static Vector2 pointedTile = new Vector2(0f,0f);
+        
+        //public static KeyValuePair<Vector2, TerrainFeature> pointedTerrainFeatures = new KeyValuePair<Vector2, TerrainFeature>(new Vector2(0f,0f), null);
+        //public static LargeTerrainFeature pointedLargeTerrainFeature = null;
         public static StardewValley.NPC pointedNPC = null;
-
-        public static StardewValley.NPC pointedNPCDebug = null;
-        public static StardewValley.Object pointedObjectDebug = null;
 
         private String RightClickMoveModeOpenButton;
         
@@ -104,17 +103,16 @@ namespace RightClickMoveMode
             vector_PlayerToDestination = new Vector2(0f, 0f);
         }
 
-
-
         private void GameEvents_UpdateTick(object sender, EventArgs e)
         {
             bool flag = Context.IsWorldReady;
             if (isExtendedModeOn)
             {
-                if ((isHoldingLeftCtrl || isHoldingRightCtrl) && isWheeling)
-                {
-                    Game1.player.CurrentToolIndex = currentToolIndex;
-                }
+                if (flag)
+                    if ((isHoldingLeftCtrl || isHoldingRightCtrl) && isWheeling)
+                    {
+                        Game1.player.CurrentToolIndex = currentToolIndex;
+                    }
             }
 
             if (isRightClickMoveModeOn)
@@ -265,6 +263,7 @@ namespace RightClickMoveMode
 
                     bool flag2 = button == "MouseRight" && Context.IsPlayerFree;
                     bool flag3 = false;
+
                     isMouseOutsiteHitBox = vector_PlayerToMouse.Length().CompareTo(hitboxRadius) > 0;
 
                     if (Game1.player.ActiveObject != null)
@@ -274,10 +273,9 @@ namespace RightClickMoveMode
                             flag2 = false;
                         }
                     }
-
-                    if (WeaponsSpecticalInteractionType == 1)
+                    if (Game1.player.CurrentTool != null && Game1.player.CurrentTool is MeleeWeapon && !Game1.player.CurrentTool.Name.Contains("Scythe") && SpecialCooldown((MeleeWeapon)Game1.player.CurrentTool) <= 0)
                     {
-                        if (Game1.player.CurrentTool != null && Game1.player.CurrentTool is MeleeWeapon && !Game1.player.CurrentTool.Name.Contains("Scythe") && SpecialCooldown((MeleeWeapon)Game1.player.CurrentTool) <= 0)
+                        if (WeaponsSpecticalInteractionType == 1)
                         {
                             flag2 = false;
                             if (isMouseOutsiteHitBox && button == "MouseRight")
@@ -286,8 +284,17 @@ namespace RightClickMoveMode
                                 e.SuppressButton();
                             }
                         }
+                        else if (WeaponsSpecticalInteractionType == 2)
+                        {
+                            if (button == "MouseRight")
+                            {
+                                e.SuppressButton();
+                                isMouseOutsiteHitBox = vector_PlayerToMouse.Length().CompareTo(hitboxRadius/4) > 0;
+                            }
+                        }
                     }
-                    
+
+
                     if (flag2)
                     {
                         if (!isHoldingMoveOnly)
@@ -314,46 +321,8 @@ namespace RightClickMoveMode
                         {
                             e.SuppressButton();
 
-                            isDone = 0;
-                            if (true)
-                            {
-                                //pointedObject = Game1.player.currentLocation.getObjectAtTile((int)grabTile.X, (int)grabTile.Y);
-                                //if (pointedObject != null)
-                                //{
-                                //    isDone = 1;
-                                //}
-                                //else if (Game1.player.currentLocation.getObjectAtTile((int)grabTile.X, (int)grabTile.Y + 1) != null)
-                                //{
-                                //    isDone = 1;
-                                //    grabTile.Y += 1;
-                                //}
-                                //else 
-                                if (Game1.isActionAtCurrentCursorTile || Game1.isInspectionAtCurrentCursorTile)
-                                {
-                                    isDone = 1;
-                                    if (!Game1.currentLocation.isActionableTile((int)grabTile.X, (int)grabTile.Y, Game1.player))
-                                        grabTile.Y += 1;
-                                }
-                                else
-                                {
-                                    pointedNPC = Game1.player.currentLocation.isCharacterAtTile(grabTile);
-                                    if (pointedNPC == null)
-                                        pointedNPC = Game1.player.currentLocation.isCharacterAtTile(grabTile + new Vector2(0f, 1f));
-                                    if (pointedNPC != null && !pointedNPC.IsMonster)
-                                    {
-                                        isDone = 2;
-                                        currentToolIndex = Game1.player.CurrentToolIndex;
-                                    }
-                                }
-                            }
+                            isDone = getActionType(ref grabTile);
                         }
-
-                        if (Game1.player.ActiveObject != null && Game1.player.ActiveObject.isPlaceable())
-                        {
-                            isDone = 3;
-                            currentToolIndex = Game1.player.CurrentToolIndex;
-                        }
-
                     }
                     else
                     {
@@ -367,6 +336,67 @@ namespace RightClickMoveMode
                     }
                 }
             }
+        }
+
+        private int getActionType(ref Vector2 grabTile)
+        {
+            StardewValley.Object pointedObject = Game1.player.currentLocation.getObjectAtTile((int)grabTile.X, (int)grabTile.Y);
+
+            if (pointedObject == null && Game1.player.currentLocation.getObjectAtTile((int)grabTile.X, (int)grabTile.Y + 1) != null)
+            {
+                grabTile.Y += 1;
+                pointedObject = Game1.player.currentLocation.getObjectAtTile((int)grabTile.X, (int)grabTile.Y);
+            }
+
+            if (pointedObject != null && pointedObject.isActionable(Game1.player))
+            {
+                return 1;
+            }
+            
+            pointedNPC = Game1.player.currentLocation.isCharacterAtTile(grabTile);
+            if (pointedNPC == null)
+                pointedNPC = Game1.player.currentLocation.isCharacterAtTile(grabTile + new Vector2(0f, 1f));
+            if (pointedNPC != null && !pointedNPC.IsMonster)
+            {
+                currentToolIndex = Game1.player.CurrentToolIndex;
+                return 2;
+            }
+            
+            if (Game1.player.ActiveObject != null && Game1.player.ActiveObject.isPlaceable())
+            {
+                currentToolIndex = Game1.player.CurrentToolIndex;
+                return 3;
+            }
+
+            foreach (KeyValuePair<Vector2, TerrainFeature> v in Game1.player.currentLocation.terrainFeatures.Pairs)
+            {
+                if (v.Value.getBoundingBox(v.Key).Intersects(new Rectangle((int)grabTile.X * 64, (int)grabTile.Y * 64, 64, 64)))
+                {
+                    //pointedTerrainFeatures = v;
+                    return 4;
+                }
+            }
+
+            if (Game1.player.currentLocation.largeTerrainFeatures != null)
+            {
+                foreach (LargeTerrainFeature f in Game1.player.currentLocation.largeTerrainFeatures)
+                {
+                    if (f.getBoundingBox().Intersects(new Rectangle((int)grabTile.X * 64, (int)grabTile.Y * 64, 64, 64)))
+                    {
+                        return 4;
+                    }
+                }
+            }
+
+            if (Game1.isActionAtCurrentCursorTile || Game1.isInspectionAtCurrentCursorTile)
+            {
+                if (!Game1.currentLocation.isActionableTile((int)grabTile.X, (int)grabTile.Y, Game1.player))
+                    if (Game1.currentLocation.isActionableTile((int)grabTile.X, (int)grabTile.Y + 1, Game1.player))
+                        grabTile.Y += 1;
+                return 1;
+            }
+
+            return 0;
         }
 
         private void ControlEvents_MouseChanged(object sender, StardewModdingAPI.Events.EventArgsMouseStateChanged e)
@@ -461,11 +491,61 @@ namespace RightClickMoveMode
             }
         }
 
+        public static void TryToCheckGrapTile()
+        {
+            if (isDone == 0) return;
+
+            if (Game1.player.isRidingHorse())
+            {
+                if ((isDone == 2) && Utility.tileWithinRadiusOfPlayer(pointedNPC.getTileX(), pointedNPC.getTileY(), 2, Game1.player))
+                    Game1.player.mount.dismount();
+                else if (Utility.tileWithinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 2, Game1.player))
+                    Game1.player.mount.dismount();
+            }
+
+            if (isDone == 1 && Utility.tileWithinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 1, Game1.player) && Game1.tryToCheckAt(grabTile, Game1.player))
+            {
+                isDone = 0;
+                isMovingAutomaticaly = false;
+            }
+
+            if ((isDone == 2 || isDone == 3) && (Game1.player.CurrentToolIndex != currentToolIndex))
+            {
+                isDone = 0;
+            }
+
+            if (isDone == 3 && (Game1.player.ActiveObject == null))
+            {
+                isDone = 0;
+            }
+
+            if (isDone == 2 && Utility.tileWithinRadiusOfPlayer(pointedNPC.getTileX(), pointedNPC.getTileY(), 1, Game1.player) && Game1.tryToCheckAt(pointedNPC.getTileLocation(), Game1.player))
+            {
+                isDone = 0;
+                isMovingAutomaticaly = false;
+            }
+
+            if (isDone == 3 && Utility.tileWithinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 1, Game1.player))
+            {
+                int stack = Game1.player.ActiveObject.Stack;
+                Utility.tryToPlaceItem(Game1.player.currentLocation, Game1.player.ActiveObject, (int)grabTile.X * 64 + 32, (int)grabTile.Y * 64 + 32);
+                if (Game1.player.ActiveObject == null || Game1.player.ActiveObject.Stack < stack || Game1.player.ActiveObject.isPlaceable())
+                {
+                    isDone = 0;
+                    isMovingAutomaticaly = false;
+                }
+            }
+
+            if (isDone == 4 && Utility.tileWithinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 1, Game1.player))
+            {
+                Game1.tryToCheckAt(grabTile, Game1.player);
+                isDone = 0;
+            }
+        }
+
         public static void MoveVectorToCommand()
         {
             bool flag = ModEntry.isMovingAutomaticaly;
-            bool flag2 = false;
-            bool flag3 = false;
 
             if (flag)
             {
@@ -480,44 +560,10 @@ namespace RightClickMoveMode
                     vector_AutoMove.Y = vector_PlayerToDestination.Y;
                 }
 
+                TryToCheckGrapTile();
 
-                if (isDone != 0)
-                {
-                    if (Game1.player.isRidingHorse())
-                    {
-                        if ((isDone == 1 || isDone == 3) && Utility.tileWithinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 2, Game1.player))
-                            Game1.player.mount.dismount();
-                        else if ((isDone == 2) && Utility.tileWithinRadiusOfPlayer(pointedNPC.getTileX(), pointedNPC.getTileY(), 2, Game1.player))
-                            Game1.player.mount.dismount();
-                    }
-
-                    if ( isDone == 1 && Utility.tileWithinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 1, Game1.player) && Game1.tryToCheckAt(grabTile, Game1.player))
-                    {
-                        isDone = 0;
-                        isMovingAutomaticaly = false;
-                    }
-
-                    if ((isDone == 2 || isDone == 3) && (Game1.player.CurrentToolIndex != currentToolIndex))
-                    {
-                        isDone = 0;
-                    }
-                    if (isDone == 2 && Utility.tileWithinRadiusOfPlayer(pointedNPC.getTileX(), pointedNPC.getTileY(), 1, Game1.player) && Game1.tryToCheckAt(pointedNPC.getTileLocation(), Game1.player))
-                    {
-                        isDone = 0;
-                        isMovingAutomaticaly = false;
-                    }
-
-                    if (isDone == 3 && Utility.tileWithinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 1, Game1.player))
-                    {
-                        int stack = Game1.player.ActiveObject.Stack;
-                        Utility.tryToPlaceItem(Game1.player.currentLocation, Game1.player.ActiveObject, (int)grabTile.X * 64 + 32, (int)grabTile.Y * 64 + 32);
-                        if (Game1.player.ActiveObject == null || Game1.player.ActiveObject.Stack < stack || Game1.player.ActiveObject.isPlaceable())
-                        {
-                            isDone = 0;
-                            isMovingAutomaticaly = false;
-                        }
-                    }
-                }
+                bool flag2 = false;
+                bool flag3 = false;
 
                 Game1.player.movementDirections.Clear();
                 if (vector_AutoMove.X <= 5 && vector_AutoMove.X >= -5)
@@ -542,15 +588,6 @@ namespace RightClickMoveMode
 
                 vector_AutoMove.Normalize();
 
-                //if (pointedObject != null && !isDone)
-                //{
-                //    if (pointedObject.isActionable(Game1.player))
-                //    {
-                //        isDone = true;
-                //        pointedObject.checkForAction(Game1.player);
-                //        //public static bool canGrabSomethingFromHere(int x, int y, Farmer who)
-                //    }
-                //}
                 if (flag2 && flag3)
                 {
                     ModEntry.isMovingAutomaticaly = false;
