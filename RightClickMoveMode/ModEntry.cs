@@ -15,14 +15,16 @@ namespace RightClickMoveMode
 {
     public class ModConfig
     {
-        public String ExtendedModeDefault { get; set; } = "On";
-        public String RightClickMoveModeDefault { get; set; } = "On";
+        public bool ExtendedModeDefault { get; set; } = true;
+        public bool RightClickMoveModeDefault { get; set; } = true;
         public String RightClickMoveModeToggleButton { get; set; } = "G";
-        public String HoldingMoveOnly { get; set; } = "Disable";
-        public int HoldTickCount { get; set; } = 10;
-        public String StopAfterHold { get; set; } = "Enable";
 
-        public String WeaponsSpecticalInteraction { get; set; } = "Enable";
+        public bool HoldingMoveOnly { get; set; } = false;
+        public int HoldTickCount { get; set; } = 10;
+        public bool StopAfterHold { get; set; } = true;
+        //public bool PerformUseAtMouseReleasePlace { get; set; } = false;
+
+        public bool WeaponsSpecticalInteraction { get; set; } = true;
         public int WeaponsSpecticalInteractionType { get; set; } = 1;
     }
 
@@ -39,6 +41,7 @@ namespace RightClickMoveMode
         public static bool isHoldingMoveOnly = false;
         public static int HoldTick = 10;
         public static bool isStopAfterHold = true;
+        //public static bool isPerformUseAtMouseReleasePlace = true;
 
         public static bool isMovingAutomaticaly = false;
         public static bool isHoldingRightMouse;
@@ -54,15 +57,15 @@ namespace RightClickMoveMode
         public static bool isHoldingRightCtrl = false;
         public static bool isHoldingRightAlt = false;
         public static bool isWheeling = false;
-        
+
         public static int isDone = 0;
-        
+
         //public static KeyValuePair<Vector2, TerrainFeature> pointedTerrainFeatures = new KeyValuePair<Vector2, TerrainFeature>(new Vector2(0f,0f), null);
         //public static LargeTerrainFeature pointedLargeTerrainFeature = null;
         public static StardewValley.NPC pointedNPC = null;
 
         private String RightClickMoveModeOpenButton;
-        
+
         private static Vector2 vector_PlayerToDestination;
         private static Vector2 vector_PlayerToMouse;
         private static Vector2 vector_AutoMove;
@@ -82,28 +85,30 @@ namespace RightClickMoveMode
 
         public override void Entry(IModHelper helper)
         {
-            InputEvents.ButtonPressed += this.InputEvents_ButtonPressed;
-            ControlEvents.MouseChanged += this.ControlEvents_MouseChanged;
-            InputEvents.ButtonReleased += this.InputEvents_ButtonReleased;
-            GameEvents.UpdateTick += this.GameEvents_UpdateTick;
-            PlayerEvents.Warped += this.PlayerEvents_Warped;
+            Helper.Events.Input.ButtonPressed += this.InputEvents_ButtonPressed;
+            Helper.Events.Input.CursorMoved += Input_CursorMoved;
+            Helper.Events.Input.MouseWheelScrolled += Input_MouseWheelScrolled;
+            Helper.Events.Input.ButtonReleased += this.InputEvents_ButtonReleased;
+            Helper.Events.GameLoop.UpdateTicked += this.GameEvents_UpdateTick;
+            Helper.Events.Player.Warped += this.PlayerEvents_Warped;
 
             StartPatching();
 
             this.config = this.Helper.ReadConfig<ModConfig>();
 
-            isRightClickMoveModeOn = this.config.RightClickMoveModeDefault.ToUpper() == "ON";
-            isExtendedModeOn = this.config.ExtendedModeDefault.ToUpper() == "ON";
+            isRightClickMoveModeOn = this.config.RightClickMoveModeDefault;
 
             RightClickMoveModeOpenButton = this.config.RightClickMoveModeToggleButton.ToUpper();
 
-            if (this.config.WeaponsSpecticalInteraction.ToUpper() == "ENABLE") ;
-                WeaponsSpecticalInteractionType = this.config.WeaponsSpecticalInteractionType;
+            if (this.config.WeaponsSpecticalInteraction) ;
+            WeaponsSpecticalInteractionType = this.config.WeaponsSpecticalInteractionType;
 
-            isHoldingMoveOnly = this.config.HoldingMoveOnly.ToUpper() == "ENABLE";
+            isHoldingMoveOnly = this.config.HoldingMoveOnly;
             HoldTick = this.config.HoldTickCount;
-            isStopAfterHold = this.config.StopAfterHold.ToUpper() == "ENABLE";
-            
+
+            isStopAfterHold = this.config.StopAfterHold;
+            //isPerformUseAtMouseReleasePlace = this.config.PerformUseAtMouseReleasePlace;
+
             position_MouseOnScreen = new Vector2(0f, 0f);
             position_Source = new Vector2(0f, 0f);
             vector_PlayerToDestination = new Vector2(0f, 0f);
@@ -180,16 +185,15 @@ namespace RightClickMoveMode
                 }
         }
 
-
-        private void PlayerEvents_Warped(object sender, EventArgsPlayerWarped e)
+        private void PlayerEvents_Warped(object sender, WarpedEventArgs e)
         {
             isMovingAutomaticaly = false;
-            
-            if (e.PriorLocation is StardewValley.Locations.Town && e.NewLocation is StardewValley.Locations.Mountain)
+
+            if (e.OldLocation is StardewValley.Locations.Town && e.NewLocation is StardewValley.Locations.Mountain)
             {
                 Game1.player.Position += new Vector2(0f, -10f);
             }
-            if (e.PriorLocation is StardewValley.Farm && e.NewLocation.Name == "Backwoods")
+            if (e.OldLocation is StardewValley.Farm && e.NewLocation.Name == "Backwoods")
             {
                 Game1.player.Position += new Vector2(0f, -10f);
             }
@@ -216,7 +220,7 @@ namespace RightClickMoveMode
             return 0;
         }
 
-        private void InputEvents_ButtonPressed(object sender, EventArgsInput e)
+        private void InputEvents_ButtonPressed(object sender, ButtonPressedEventArgs e)
         {
             bool flag = Context.IsWorldReady;
             string button = e.Button.ToString();
@@ -284,17 +288,17 @@ namespace RightClickMoveMode
                         if (WeaponsSpecticalInteractionType == 1)
                         {
                             flag2 = false;
-                            if (isMouseOutsiteHitBox && button == "MouseRight")
+                            if (isMouseOutsiteHitBox && button == "MouseRight" && !Game1.player.isRidingHorse())
                             {
                                 ((MeleeWeapon)Game1.player.CurrentTool).animateSpecialMove(Game1.player);
-                                e.SuppressButton();
+                                Helper.Input.Suppress(e.Button);
                             }
                         }
                         else if (WeaponsSpecticalInteractionType == 2)
                         {
                             if (button == "MouseRight")
                             {
-                                e.SuppressButton();
+                                Helper.Input.Suppress(e.Button);
                                 //isMouseOutsiteHitBox = vector_PlayerToMouse.Length().CompareTo(hitboxRadius/4) > 0;
                                 isMouseOutsiteHitBox = true;
                             }
@@ -313,7 +317,6 @@ namespace RightClickMoveMode
                             vector_PlayerToDestination.Y = position_Destination.Y - Game1.player.GetBoundingBox().Center.Y;
                             grabTile = new Vector2((float)(position_MouseOnScreen.X + Game1.viewport.X), (float)(position_MouseOnScreen.Y + Game1.viewport.Y)) / 64f;
 
-
                             isMovingAutomaticaly = true;
                             isBeingControl = false;
                         }
@@ -322,11 +325,11 @@ namespace RightClickMoveMode
 
                         if (isHoldingRunButton && Game1.player.isRidingHorse())
                         {
-                            e.SuppressButton();
+                            Helper.Input.Suppress(e.Button);
                         }
                         else if (flag3)
                         {
-                            e.SuppressButton();
+                            Helper.Input.Suppress(e.Button);
 
                             isDone = getActionType(ref grabTile);
                         }
@@ -337,7 +340,7 @@ namespace RightClickMoveMode
                     }
                     else
                     {
-                        if (e.IsUseToolButton)
+                        if (e.Button.IsUseToolButton())
                         {
                             tickCount = 15;
                         }
@@ -351,7 +354,14 @@ namespace RightClickMoveMode
 
         private int getActionType(ref Vector2 grabTile)
         {
-            StardewValley.Object  pointedObject = Game1.player.currentLocation.getObjectAtTile((int)grabTile.X, (int)grabTile.Y);
+
+            // There is 5 type:
+            // 1 is for Object is 1x1 tile size but with 2x1 hit box (Chess, ...)
+            // 2 is for NPC
+            // 3 to handle Fence, Seed, ... thaat placeable
+            // 4 to handle terrainFeatures (some has hitbox that unreachable and have to change)
+            // 5 is Unknown, try to grap at pointed place 
+            StardewValley.Object pointedObject = Game1.player.currentLocation.getObjectAtTile((int)grabTile.X, (int)grabTile.Y);
 
             if (pointedObject == null && Game1.player.currentLocation.getObjectAtTile((int)grabTile.X, (int)grabTile.Y + 1) != null)
             {
@@ -359,12 +369,12 @@ namespace RightClickMoveMode
                 pointedObject = Game1.player.currentLocation.getObjectAtTile((int)grabTile.X, (int)grabTile.Y);
             }
 
-            if (pointedObject != null && pointedObject.Type!= null && (pointedObject.IsSpawnedObject || (pointedObject.Type.Equals("Crafting") 
+            if (pointedObject != null && pointedObject.Type != null && (pointedObject.IsSpawnedObject || (pointedObject.Type.Equals("Crafting")
                 && pointedObject.Type.Equals("interactive"))))
             {
                 return 1;
             }
-            
+
             pointedNPC = Game1.player.currentLocation.isCharacterAtTile(grabTile);
             if (pointedNPC == null)
                 pointedNPC = Game1.player.currentLocation.isCharacterAtTile(grabTile + new Vector2(0f, 1f));
@@ -373,7 +383,7 @@ namespace RightClickMoveMode
                 currentToolIndex = Game1.player.CurrentToolIndex;
                 return 2;
             }
-            
+
             if (Game1.player.ActiveObject != null && Game1.player.ActiveObject.isPlaceable())
             {
                 currentToolIndex = Game1.player.CurrentToolIndex;
@@ -382,10 +392,12 @@ namespace RightClickMoveMode
 
             foreach (KeyValuePair<Vector2, TerrainFeature> v in Game1.player.currentLocation.terrainFeatures.Pairs)
             {
-                if (!(v.Value is HoeDirt || v.Value is Grass) && v.Value.getBoundingBox(v.Key).Intersects(new Rectangle((int)grabTile.X * 64, (int)grabTile.Y * 64, 64, 64)))
+                if (v.Value.getBoundingBox(v.Key).Intersects(new Rectangle((int)grabTile.X * 64, (int)grabTile.Y * 64, 64, 64)))
                 {
                     //pointedTerrainFeatures = v;
-                    return 4;
+                    if ((v.Value is Grass) || (v.Value is HoeDirt && !((HoeDirt)v.Value).readyForHarvest())) ;
+                    else
+                        return 4;
                 }
             }
 
@@ -411,23 +423,14 @@ namespace RightClickMoveMode
             return 5;
         }
 
-        private void ControlEvents_MouseChanged(object sender, StardewModdingAPI.Events.EventArgsMouseStateChanged e)
+
+        private void Input_MouseWheelScrolled(object sender, MouseWheelScrolledEventArgs e)
         {
             bool flag = Context.IsWorldReady;
 
-            if (isRightClickMoveModeOn)
-                if (flag)
-                {
-                    if (Context.IsPlayerFree)
-                    {
-                        position_MouseOnScreen.X = (float)e.NewPosition.X;
-                        position_MouseOnScreen.Y = (float)e.NewPosition.Y;
-                    }
-                }
-
             if (isExtendedModeOn)
             {
-                if (e.PriorState.ScrollWheelValue != e.NewState.ScrollWheelValue)
+                if (e.OldValue != e.NewValue)
                     isWheeling = true;
                 else
                     isWheeling = false;
@@ -436,14 +439,14 @@ namespace RightClickMoveMode
                 {
                     if (isHoldingLeftCtrl || isHoldingRightCtrl)
                     {
-                        if (e.PriorState.ScrollWheelValue < e.NewState.ScrollWheelValue)
+                        if (e.OldValue < e.NewValue)
                         {
                             currentToolIndex = Game1.player.CurrentToolIndex;
                             if (Game1.options.zoomLevel <= Options.maxZoom)
                                 Game1.options.zoomLevel += 0.05f;
                             Game1.exitActiveMenu();
                         }
-                        else if (e.PriorState.ScrollWheelValue > e.NewState.ScrollWheelValue)
+                        else if (e.OldValue > e.NewValue)
                         {
                             currentToolIndex = Game1.player.CurrentToolIndex;
                             if (Game1.options.zoomLevel >= Options.minZoom)
@@ -455,7 +458,22 @@ namespace RightClickMoveMode
             }
         }
 
-        private void InputEvents_ButtonReleased(object sender, EventArgsInput e)
+        private void Input_CursorMoved(object sender, CursorMovedEventArgs e)
+        {
+            bool flag = Context.IsWorldReady;
+
+            if (isRightClickMoveModeOn)
+                if (flag)
+                {
+                    if (Context.IsPlayerFree)
+                    {
+                        position_MouseOnScreen.X = (float)e.NewPosition.ScreenPixels.X;
+                        position_MouseOnScreen.Y = (float)e.NewPosition.ScreenPixels.Y;
+                    }
+                }
+        }
+
+        private void InputEvents_ButtonReleased(object sender, ButtonReleasedEventArgs e)
         {
             bool flag = Context.IsWorldReady;
 
@@ -508,6 +526,11 @@ namespace RightClickMoveMode
                             {
                                 isMovingAutomaticaly = false;
                             }
+                            //if (isPerformUseAtMouseReleasePlace && !isStopAfterHold && (holdCount > HoldTick))
+                            //{
+                            //    grabTile = new Vector2((float)(position_MouseOnScreen.X + Game1.viewport.X), (float)(position_MouseOnScreen.Y + Game1.viewport.Y)) / 64f;
+                            //    getActionType(ref grabTile);
+                            //}
                         }
                     }
                 }
@@ -665,7 +688,7 @@ namespace RightClickMoveMode
         {
             if (isRightClickMoveModeOn)
             {
-                if (!isBeingControl && isMovingAutomaticaly && Context.IsPlayerFree)
+                if (!isBeingControl && isMovingAutomaticaly && Context.IsPlayerFree && Game1.player.CanMove)
                 {
                     MovePosition(Game1.currentGameTime, Game1.viewport, Game1.player.currentLocation);
                     return false;
@@ -682,18 +705,18 @@ namespace RightClickMoveMode
                 {
                     isBeingAutoCommand = true;
                     MoveVectorToCommand();
-                    
+
                     if (isHoldingRunButton && !Game1.player.canOnlyWalk)
                     {
                         Game1.player.setRunning(!Game1.options.autoRun, false);
-                        Game1.player.setMoving(Game1.player.running ? (byte) 16: (byte) 48);
+                        Game1.player.setMoving(Game1.player.running ? (byte)16 : (byte)48);
                     }
                     else if (!isHoldingRunButton && !Game1.player.canOnlyWalk)
                     {
                         Game1.player.setRunning(Game1.options.autoRun, false);
-                        Game1.player.setMoving(Game1.player.running ? (byte) 16 : (byte)48);
+                        Game1.player.setMoving(Game1.player.running ? (byte)16 : (byte)48);
                     }
-                    
+
                     isBeingAutoCommand = false;
                 }
                 else
@@ -757,7 +780,7 @@ namespace RightClickMoveMode
                     }
                 }
                 else
-                {   
+                {
                     Game1.player.xVelocity -= Game1.player.xVelocity / 16f;
                     Game1.player.yVelocity -= Game1.player.yVelocity / 16f;
                     if (Math.Abs(Game1.player.xVelocity) <= 0.05f)
@@ -864,7 +887,7 @@ namespace RightClickMoveMode
                     return -1;
             }
         }
-        
+
         public static void TryMoveDrection(GameTime time, xTile.Dimensions.Rectangle viewport, GameLocation currentLocation, int faceDirection)
         {
             Warp warp = Game1.currentLocation.isCollidingWithWarp(Game1.player.nextPosition(faceDirection));
