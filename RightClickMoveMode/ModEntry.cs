@@ -15,14 +15,16 @@ namespace RightClickMoveMode
 {
     public class ModConfig
     {
-        public String ExtendedModeDefault { get; set; } = "On";
-        public String RightClickMoveModeDefault { get; set; } = "On";
+        public bool ExtendedModeDefault { get; set; } = true;
+        public bool RightClickMoveModeDefault { get; set; } = true;
         public String RightClickMoveModeToggleButton { get; set; } = "G";
-        public String HoldingMoveOnly { get; set; } = "Disable";
-        public int HoldTickCount { get; set; } = 10;
-        public String StopAfterHold { get; set; } = "Enable";
 
-        public String WeaponsSpecticalInteraction { get; set; } = "Enable";
+        public bool HoldingMoveOnly { get; set; } = false;
+        public int HoldTickCount { get; set; } = 10;
+        public bool StopAfterHold { get; set; } = true;
+        //public bool PerformUseAtMouseReleasePlace { get; set; } = false;
+
+        public bool WeaponsSpecticalInteraction { get; set; } = true;
         public int WeaponsSpecticalInteractionType { get; set; } = 1;
     }
 
@@ -39,6 +41,7 @@ namespace RightClickMoveMode
         public static bool isHoldingMoveOnly = false;
         public static int HoldTick = 10;
         public static bool isStopAfterHold = true;
+        //public static bool isPerformUseAtMouseReleasePlace = true;
 
         public static bool isMovingAutomaticaly = false;
         public static bool isHoldingRightMouse;
@@ -92,18 +95,19 @@ namespace RightClickMoveMode
 
             this.config = this.Helper.ReadConfig<ModConfig>();
 
-            isRightClickMoveModeOn = this.config.RightClickMoveModeDefault.ToUpper() == "ON";
-            isExtendedModeOn = this.config.ExtendedModeDefault.ToUpper() == "ON";
+            isRightClickMoveModeOn = this.config.RightClickMoveModeDefault;
 
             RightClickMoveModeOpenButton = this.config.RightClickMoveModeToggleButton.ToUpper();
 
-            if (this.config.WeaponsSpecticalInteraction.ToUpper() == "ENABLE") ;
+            if (this.config.WeaponsSpecticalInteraction) ;
                 WeaponsSpecticalInteractionType = this.config.WeaponsSpecticalInteractionType;
 
-            isHoldingMoveOnly = this.config.HoldingMoveOnly.ToUpper() == "ENABLE";
+            isHoldingMoveOnly = this.config.HoldingMoveOnly;
             HoldTick = this.config.HoldTickCount;
-            isStopAfterHold = this.config.StopAfterHold.ToUpper() == "ENABLE";
-            
+
+            isStopAfterHold = this.config.StopAfterHold;
+            //isPerformUseAtMouseReleasePlace = this.config.PerformUseAtMouseReleasePlace;
+
             position_MouseOnScreen = new Vector2(0f, 0f);
             position_Source = new Vector2(0f, 0f);
             vector_PlayerToDestination = new Vector2(0f, 0f);
@@ -284,7 +288,7 @@ namespace RightClickMoveMode
                         if (WeaponsSpecticalInteractionType == 1)
                         {
                             flag2 = false;
-                            if (isMouseOutsiteHitBox && button == "MouseRight")
+                            if (isMouseOutsiteHitBox && button == "MouseRight" && !Game1.player.isRidingHorse())
                             {
                                 ((MeleeWeapon)Game1.player.CurrentTool).animateSpecialMove(Game1.player);
                                 e.SuppressButton();
@@ -312,8 +316,7 @@ namespace RightClickMoveMode
                             vector_PlayerToDestination.X = position_Destination.X - Game1.player.GetBoundingBox().Center.X;
                             vector_PlayerToDestination.Y = position_Destination.Y - Game1.player.GetBoundingBox().Center.Y;
                             grabTile = new Vector2((float)(position_MouseOnScreen.X + Game1.viewport.X), (float)(position_MouseOnScreen.Y + Game1.viewport.Y)) / 64f;
-
-
+                            
                             isMovingAutomaticaly = true;
                             isBeingControl = false;
                         }
@@ -351,6 +354,13 @@ namespace RightClickMoveMode
 
         private int getActionType(ref Vector2 grabTile)
         {
+
+            // There is 5 type:
+            // 1 is for Object is 1x1 tile size but with 2x1 hit box (Chess, ...)
+            // 2 is for NPC
+            // 3 to handle Fence, Seed, ... thaat placeable
+            // 4 to handle terrainFeatures (some has hitbox that unreachable and have to change)
+            // 5 is Unknown, try to grap at pointed place 
             StardewValley.Object  pointedObject = Game1.player.currentLocation.getObjectAtTile((int)grabTile.X, (int)grabTile.Y);
 
             if (pointedObject == null && Game1.player.currentLocation.getObjectAtTile((int)grabTile.X, (int)grabTile.Y + 1) != null)
@@ -382,10 +392,12 @@ namespace RightClickMoveMode
 
             foreach (KeyValuePair<Vector2, TerrainFeature> v in Game1.player.currentLocation.terrainFeatures.Pairs)
             {
-                if (!(v.Value is HoeDirt || v.Value is Grass) && v.Value.getBoundingBox(v.Key).Intersects(new Rectangle((int)grabTile.X * 64, (int)grabTile.Y * 64, 64, 64)))
+                if (v.Value.getBoundingBox(v.Key).Intersects(new Rectangle((int)grabTile.X * 64, (int)grabTile.Y * 64, 64, 64)))
                 {
                     //pointedTerrainFeatures = v;
-                    return 4;
+                    if ((v.Value is Grass) || (v.Value is HoeDirt && !((HoeDirt)v.Value).readyForHarvest())) ;
+                    else
+                        return 4;
                 }
             }
 
@@ -508,6 +520,11 @@ namespace RightClickMoveMode
                             {
                                 isMovingAutomaticaly = false;
                             }
+                            //if (isPerformUseAtMouseReleasePlace && !isStopAfterHold && (holdCount > HoldTick))
+                            //{
+                            //    grabTile = new Vector2((float)(position_MouseOnScreen.X + Game1.viewport.X), (float)(position_MouseOnScreen.Y + Game1.viewport.Y)) / 64f;
+                            //    getActionType(ref grabTile);
+                            //}
                         }
                     }
                 }
@@ -665,7 +682,7 @@ namespace RightClickMoveMode
         {
             if (isRightClickMoveModeOn)
             {
-                if (!isBeingControl && isMovingAutomaticaly && Context.IsPlayerFree)
+                if (!isBeingControl && isMovingAutomaticaly && Context.IsPlayerFree && Game1.player.CanMove)
                 {
                     MovePosition(Game1.currentGameTime, Game1.viewport, Game1.player.currentLocation);
                     return false;
