@@ -23,3 +23,15 @@ _ReSharper*/
 **/packages/*
 *.nuget.props
 *.nuget.targets
+/RightClickMoveMode/AStarGraph.cs
+/RightClickMoveMode/AStarNode.cs
+/RightClickMoveMode/AStarPath.cs
+/RightClickMoveMode/FaceDirection.cs
+/RightClickMoveMode/VirtualJoypad.cs
+/RightClickMoveMode/TapToMoveUtils.cs
+/RightClickMoveMode/TapToMovePhase.cs
+/RightClickMoveMode/TapToMove.cs
+/RightClickMoveMode/TapQueueItem.cs
+/RightClickMoveMode/PinchZoom.cs
+/RightClickMoveMode/ModEntryBase.cs
+/RightClickMoveMode/MobileKeyStates.cs
