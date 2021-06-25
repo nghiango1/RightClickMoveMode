@@ -77,7 +77,6 @@ namespace RightClickMoveMode {
       if (config.RightClickMoveModeDefault)
         if (flag) {
           vector_PlayerToMouse.X=position_MouseOnScreen.X+Game1.viewport.X-Game1.player.GetBoundingBox().Center.X;
-          //this.Monitor.Log(String.Format("{0} {1} {2}", position_MouseOnScreen.X, Game1.viewport.X , Game1.player.GetBoundingBox().Center.X), LogLevel.Info);
           vector_PlayerToMouse.Y=position_MouseOnScreen.Y+Game1.viewport.Y-Game1.player.GetBoundingBox().Center.Y;
           if (Context.IsPlayerFree) {
             MouseState mouseState = Mouse.GetState();
@@ -199,7 +198,6 @@ namespace RightClickMoveMode {
             } else if (config.WeaponsSpecticalInteractionType==2) {
               if (button=="MouseRight") {
                 Helper.Input.Suppress(e.Button);
-                //isMouseOutsiteHitBox = vector_PlayerToMouse.Length().CompareTo(hitboxRadius/4) > 0;
                 isMouseOutsiteHitBox=true;
               }
               if ((button=="MouseMiddle"||button=="MouseX1")&&!Game1.player.isRidingHorse()) {
@@ -286,7 +284,6 @@ namespace RightClickMoveMode {
 
       foreach (KeyValuePair<Vector2, TerrainFeature> v in Game1.player.currentLocation.terrainFeatures.Pairs) {
         if (v.Value.getBoundingBox(v.Key).Intersects(new Rectangle((int)grabTile.X*64, (int)grabTile.Y*64, 64, 64))) {
-          //pointedTerrainFeatures = v;
           if ((v.Value is Grass)||(v.Value is HoeDirt dirt&&!dirt.readyForHarvest())) { } else
             return 4;
         }
@@ -338,11 +335,8 @@ namespace RightClickMoveMode {
 
       if (config.RightClickMoveModeDefault)
         if (flag) {
-          //if (Context.IsPlayerFree)
-          //{
           position_MouseOnScreen.X=Game1.getMousePosition(Game1.uiMode).X;
           position_MouseOnScreen.Y=Game1.getMousePosition(Game1.uiMode).Y;
-          //}
         }
     }
 
@@ -413,7 +407,7 @@ namespace RightClickMoveMode {
     }
 
     public static void MoveVectorToCommand() {
-      bool flag = ModEntry.isMovingAutomaticaly;
+      bool flag = isMovingAutomaticaly;
 
       if (flag) {
         if (isHoldingMove) {
@@ -449,7 +443,7 @@ namespace RightClickMoveMode {
         vector_AutoMove.Normalize();
 
         if (flag2&&flag3) {
-          ModEntry.isMovingAutomaticaly=false;
+          isMovingAutomaticaly=false;
           isTryToDoActionAtClickedTitle=0;
         }
       }
@@ -479,10 +473,7 @@ namespace RightClickMoveMode {
       // Prefix Method return will control the base method execution
       // true mean base method will exec, false mean the opposite
       if (config.RightClickMoveModeDefault) {
-        if (!isMovingAutomaticaly||isBeingAutoCommand)
-          return true;
-        else
-          return false;
+        return !isMovingAutomaticaly||isBeingAutoCommand;
       }
       return true;
     }
