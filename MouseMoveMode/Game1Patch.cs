@@ -1,6 +1,6 @@
 ﻿using System;
-using RightClickMoveMode;
-using Harmony;
+using MouseMoveMode;
+using HarmonyLib;
 using Microsoft.Xna.Framework;
 using StardewValley;
 using StardewModdingAPI;
@@ -12,7 +12,7 @@ namespace Game1Patch
     {
         public static bool Prefix(Game1 __instance)
         {
-            if (ModEntry.isRightClickMoveModeOn)
+            if (ModEntry.config.RightClickMoveModeDefault)
             {
                 if (!ModEntry.isMovingAutomaticaly || ModEntry.isBeingAutoCommand)
                     return true;
@@ -32,7 +32,7 @@ namespace Game1Patch
     {
         public static void Postfix(Game1 __instance)
         {
-            if (ModEntry.isRightClickMoveModeOn)
+            if (ModEntry.config.RightClickMoveModeDefault)
             {
                 if (!ModEntry.isBeingControl && Context.IsPlayerFree)
                 {

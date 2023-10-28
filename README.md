@@ -16,8 +16,18 @@
 
 - Press *H* for On/off Extended mouse function mode (auto On)
   
+# Build
+
+- Install NET 5.0 (Need manual download)
+- Currently using VS2022, VS2019 to build with current source have no problem
+
+> I have to create new project using VS2019 Community for NET 5.0 support
   
 # Version
+## Current : Update project sln to NET 5.0 and Harmony 2
+-  After a while, I found out that I can't even complie the code any more
+-  Refactor some of my code, but mainly change still forcus on library change
+
 ## 1.1 : Source code release version
 -  Extended mouse function mode added (press *H* to On/Off, auto On when open)
 -  Organize code for futher update
