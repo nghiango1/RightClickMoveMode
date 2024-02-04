@@ -2,10 +2,13 @@
 Mouse mode mode is a quality of life mods for Stardew valley providing mouse click to move. Also add some function that should come along with the game  
 
 ## Why?
-> As the game map is big, WASD take quite of an effort for a relax farming game
+> As the game map is big, WASD take quite of an effort for a relax farming game. Also, the mouse just stuck around the player all the time.
 
 By using mouse for transportation, it is possible to consumming most of the game content with only mouse.
 This also providing acessbility feature needed, As some player can't really play the game with keyboard.
+
+Thank you for your the kind words
+![image](https://github.com/nghiango1/RightClickMoveMode/assets/31164703/2a8dc82e-ba39-446b-9a09-cc695934c8fb)
 
 ## Feature
 - Right-click or Holding right mouse will make player move 
@@ -64,4 +67,4 @@ Debug
 - Check the SMAPI log for testing the mod.
 
 > If build step fail, try install the game, steam in default location. It likely that the `Pathoschild.Stardew.ModBuildConfig` Nuget package can't detect game location.
-> If you really know what you are doing, config the path manully is possible. I really simplify the Linux experience here. 
+> If you really know what you are doing, config the path manully is possible. I really simplify the Linux experience here.
