@@ -47,6 +47,8 @@ If you are using VS2019, the Debug and Build step is pretty straight forward. I 
 
 ### Linux
 
+> I really simplify the Linux experience here. For a full guide, go to [my other repo](https://github.com/nghiango1/hello/tree/main/c%23)
+
 It quite impossible even for me to get the debug working, so we can skip it and try relying on `log` that provided by SMAPI. If you know how to then let me know.
 
 Preparing environment
@@ -55,7 +57,7 @@ Preparing environment
   ./dotnet-install.sh --version 5.0.408 
   ```
 - Update your PATH to have the `dotnet` executable avaiable
-- Install Nuget pakage manually using `dotnet` CLI
+- (Optional) Install Nuget pakage manually using `dotnet` CLI
 
 Build
 - Clone the code
@@ -63,8 +65,7 @@ Build
 
 Debug
 - The build file should be in release folder, manually copy and extract the build `.zip` file to the game `Mod` folder path
-- Start the game (from steam)
+- Start the game
 - Check the SMAPI log for testing the mod.
 
 > If build step fail, try install the game, steam in default location. It likely that the `Pathoschild.Stardew.ModBuildConfig` Nuget package can't detect game location.
-> If you really know what you are doing, config the path manully is possible. I really simplify the Linux experience here.
