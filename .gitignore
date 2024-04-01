@@ -1,3 +1,6 @@
+# External file
+SMAPI/
+
 # user-specific files
 *.suo
 *.user
