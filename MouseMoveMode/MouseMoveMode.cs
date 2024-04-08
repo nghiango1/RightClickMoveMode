@@ -273,6 +273,19 @@ namespace MouseMoveMode
                         }
                     }
                 }
+                else if (config.WeaponsSpecticalInteractionType == 3)
+                {
+                    if (button == "MouseRight")
+                    {
+                        Helper.Input.Suppress(e.Button);
+                        isMouseOutsiteHitBox = true;
+                    }
+                    if ((button == "MouseMiddle" || button == "MouseX1") && !Game1.player.isRidingHorse())
+                    {
+                        weapon.animateSpecialMove(Game1.player);
+                        Helper.Input.Suppress(e.Button);
+                    }
+                }
             }
 
 
