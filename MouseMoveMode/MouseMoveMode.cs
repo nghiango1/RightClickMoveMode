@@ -21,6 +21,7 @@ namespace MouseMoveMode
         public bool HoldingMoveOnly { get; set; } = false;
         public int WeaponsSpecticalInteractionType { get; set; } = 2;
         public bool ExtendedModeDefault { get; set; } = true;
+        public float MouseWhellingZoomStep = 0.25f;
         public float MouseWhellingMaxZoom = Options.maxZoom;
         public float MouseWhellingMinZoom = Options.minZoom;
         public KeybindList FullScreenKeybindShortcut { get; set; } = KeybindList.Parse("RightAlt + Enter");
@@ -421,7 +422,7 @@ namespace MouseMoveMode
                 if (e.OldValue < e.NewValue)
                 {
                     if (Game1.options.zoomLevel <= config.MouseWhellingMaxZoom)
-                        Game1.options.desiredBaseZoomLevel += 0.05f;
+                        Game1.options.desiredBaseZoomLevel += config.MouseWhellingZoomStep;
                     Game1.exitActiveMenu();
                     if (!(Game1.player.UsingTool && (Game1.player.CurrentTool == null || !(Game1.player.CurrentTool is FishingRod fishingRod) || (!fishingRod.isReeling && !fishingRod.pullingOutOfWater))))
                     {
@@ -431,7 +432,7 @@ namespace MouseMoveMode
                 else if (e.OldValue > e.NewValue)
                 {
                     if (Game1.options.zoomLevel >= config.MouseWhellingMinZoom)
-                        Game1.options.desiredBaseZoomLevel -= 0.05f;
+                        Game1.options.desiredBaseZoomLevel -= config.MouseWhellingZoomStep;
                     Game1.exitActiveMenu();
                     if (!(Game1.player.UsingTool && (Game1.player.CurrentTool == null || !(Game1.player.CurrentTool is FishingRod fishingRod) || (!fishingRod.isReeling && !fishingRod.pullingOutOfWater))))
                     {
