@@ -58,7 +58,7 @@ namespace MouseMoveMode
         private static int holdCount = 15;
 
         private static int currentToolIndex = 1;
-        public static bool isDebugMode = false;
+        public static bool isDebugMode = true;
 
         /*********
         ** Public methods
@@ -82,10 +82,9 @@ namespace MouseMoveMode
 
         private void GameEvents_UpdateTick(object sender, EventArgs e)
         {
-            bool flag = Context.IsWorldReady;
-
             if (!config.RightClickMoveModeDefault)
                 return;
+
             if (!Context.IsWorldReady)
                 return;
 
@@ -219,38 +218,62 @@ namespace MouseMoveMode
             if (!Context.IsWorldReady)
                 return;
 
+            if (isDebugMode)
+                this.Monitor.Log("Mouse move mode - Button pressed handle function start", LogLevel.Debug);
+
             if (config.RightClickMoveModeToggleButton.JustPressed())
             {
                 config.RightClickMoveModeDefault = !config.RightClickMoveModeDefault;
+                if (isDebugMode)
+                    this.Monitor.Log("3m - Toggle 3m ingame press", LogLevel.Debug);
             }
 
             if (!config.RightClickMoveModeDefault)
+            {
+                if (isDebugMode)
+                    this.Monitor.Log("3m - 3m disabled, handle function stop", LogLevel.Debug);
                 return;
+            }
 
             if (e.Button == Game1.options.runButton[0].ToSButton())
             {
+                if (isDebugMode)
+                    this.Monitor.Log("3m - Run button press, update flag", LogLevel.Debug);
                 isHoldingRunButton = true;
             }
 
             bool mouseRightIsDown = button == "MouseRight" && Context.IsPlayerFree;
+            if (isDebugMode)
+                this.Monitor.Log("3m - Right mouse press detected", LogLevel.Debug);
             bool isMouseOutsiteHitBox = vector_PlayerToMouse.Length().CompareTo(hitboxRadius) > 0;
+            if (isDebugMode)
+                this.Monitor.Log("3m - Flag for Check if mouse close to player return " + isMouseOutsiteHitBox.ToString(), LogLevel.Debug);
 
             if (Game1.player.ActiveObject != null)
             {
                 if (Game1.player.ActiveObject is Furniture)
                 {
                     mouseRightIsDown = false;
+                    if (isDebugMode)
+                        this.Monitor.Log("3m - Current active item is placeable so we no longer need to move", LogLevel.Debug);
                 }
             }
+
             if (Game1.player.CurrentTool != null && Game1.player.CurrentTool is MeleeWeapon weapon && !Game1.player.CurrentTool.Name.Contains("Scythe") && SpecialCooldown(weapon) <= 0)
             {
+                if (isDebugMode)
+                    this.Monitor.Log("3m - Current active item is weapon, start speacial handle", LogLevel.Debug);
                 if (config.WeaponsSpecticalInteractionType == 1)
                 {
+                    if (isDebugMode)
+                        this.Monitor.Log("3m - Special attack performming", LogLevel.Debug);
                     mouseRightIsDown = false;
                     if (isMouseOutsiteHitBox && button == "MouseRight" && !Game1.player.isRidingHorse())
                     {
                         weapon.animateSpecialMove(Game1.player);
                         Helper.Input.Suppress(e.Button);
+                        if (isDebugMode)
+                            this.Monitor.Log("3m - Right click suppended", LogLevel.Debug);
                     }
                 }
                 else if (config.WeaponsSpecticalInteractionType == 2)
@@ -258,19 +281,31 @@ namespace MouseMoveMode
                     if (button == "MouseRight")
                     {
                         Helper.Input.Suppress(e.Button);
+                        if (isDebugMode)
+                            this.Monitor.Log("3m - Right click suppended", LogLevel.Debug);
                         isMouseOutsiteHitBox = true;
+                        if (isDebugMode)
+                            this.Monitor.Log("3m - Right click suppended", LogLevel.Debug);
                     }
                     if ((button == "MouseMiddle" || button == "MouseX1") && !Game1.player.isRidingHorse())
                     {
+                        if (isDebugMode)
+                            this.Monitor.Log("3m - Special attack performming", LogLevel.Debug);
                         weapon.animateSpecialMove(Game1.player);
                         Helper.Input.Suppress(e.Button);
+                        if (isDebugMode)
+                            this.Monitor.Log("3m - Right click suppended", LogLevel.Debug);
                     }
                     if (button == "MouseLeft" && vector_PlayerToMouse.Length().CompareTo(hitboxRadius) < 0 && !Game1.player.isRidingHorse())
                     {
                         if (vector_PlayerToMouse.Y < 32f)
                         {
+                            if (isDebugMode)
+                                this.Monitor.Log("3m - Special attack performming", LogLevel.Debug);
                             weapon.animateSpecialMove(Game1.player);
                             Helper.Input.Suppress(e.Button);
+                            if (isDebugMode)
+                                this.Monitor.Log("3m - Right click suppended", LogLevel.Debug);
                         }
                     }
                 }
@@ -279,12 +314,16 @@ namespace MouseMoveMode
                     if (button == "MouseRight")
                     {
                         Helper.Input.Suppress(e.Button);
+                        if (isDebugMode)
+                            this.Monitor.Log("3m - Right click suppended", LogLevel.Debug);
                         isMouseOutsiteHitBox = true;
                     }
                     if ((button == "MouseMiddle" || button == "MouseX1") && !Game1.player.isRidingHorse())
                     {
                         weapon.animateSpecialMove(Game1.player);
                         Helper.Input.Suppress(e.Button);
+                        if (isDebugMode)
+                            this.Monitor.Log("3m - MouseX1/MouseMiddle suppended", LogLevel.Debug);
                     }
                 }
             }
@@ -292,6 +331,8 @@ namespace MouseMoveMode
 
             if (mouseRightIsDown)
             {
+                if (isDebugMode)
+                    this.Monitor.Log("3m - Start update all auto movement flag", LogLevel.Debug);
                 if (!config.HoldingMoveOnly)
                 {
                     position_Destination.X = position_MouseOnScreen.X + Game1.viewport.X;
@@ -319,17 +360,24 @@ namespace MouseMoveMode
                 {
                     isTryToDoActionAtClickedTitle = 0;
                 }
+                if (isDebugMode)
+                    this.Monitor.Log("3m - Finish update auto movement flag", LogLevel.Debug);
             }
             else
             {
                 if (e.Button.IsUseToolButton())
                 {
+                    this.Monitor.Log("3m - 15ms needed to animate use tool sprite start", LogLevel.Debug);
                     tickCount = 15;
                 }
                 else
                     tickCount = 0;
                 if (!config.ForceMoveButton.IsDown())
+                {
+                    if (isDebugMode)
+                        this.Monitor.Log("3m - Force move button isn't active, auto movement interupted", LogLevel.Debug);
                     isBeingControl = true;
+                }
             }
         }
 
@@ -610,6 +658,11 @@ namespace MouseMoveMode
                 return !isMovingAutomaticaly || isBeingAutoCommand;
             }
             return true;
+        }
+
+        public static bool isMoveable()
+        {
+            return config.RightClickMoveModeDefault && Context.IsPlayerFree && Game1.player.CanMove;
         }
 
         public static bool PrefixMethod_Farmer_MovePositionPatch()
