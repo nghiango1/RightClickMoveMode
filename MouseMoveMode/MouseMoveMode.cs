@@ -242,7 +242,7 @@ namespace MouseMoveMode
                     mouseRightIsDown = false;
                 }
             }
-            if (Game1.player.CurrentTool != null && Game1.player.CurrentTool is MeleeWeapon weapon && !Game1.player.CurrentTool.Name.Contains("Scythe") && SpecialCooldown(weapon) <= 0)
+            if (Game1.player.CurrentTool != null && Game1.player.CurrentTool is MeleeWeapon weapon && !Game1.player.CurrentTool.Name.Contains("Scythe") && SpecialCooldown(weapon) <= 0 && Context.IsPlayerFree && Game1.player.CanMove)
             {
                 if (config.WeaponsSpecticalInteractionType == 1)
                 {
