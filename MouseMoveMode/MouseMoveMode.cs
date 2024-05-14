@@ -57,6 +57,8 @@ namespace MouseMoveMode
         private static int tickCount = 15;
         private static int holdCount = 15;
 
+        private static PathFindingHelper pathFindingHelper;
+
         private static int currentToolIndex = 1;
         public static bool isDebugMode = false;
 
@@ -67,20 +69,29 @@ namespace MouseMoveMode
         /// <param name="helper">Provides simplified APIs for writing mods.</param>
         public override void Entry(IModHelper helper)
         {
-            Helper.Events.Input.ButtonPressed += this.MouseMoveMode_InputEvents_ButtonPressed;
-            Helper.Events.Input.ButtonPressed += this.ExtendedMode_InputEvents_ButtonPressed;
-            Helper.Events.Input.CursorMoved += Input_CursorMoved;
-            Helper.Events.Input.MouseWheelScrolled += Input_MouseWheelScrolled;
-            Helper.Events.Input.ButtonReleased += this.InputEvents_ButtonReleased;
-            Helper.Events.GameLoop.UpdateTicked += this.GameEvents_UpdateTick;
-            Helper.Events.Player.Warped += this.PlayerEvents_Warped;
+            Helper.Events.Input.ButtonPressed += this.ButtonPressedMods;
+            Helper.Events.Input.ButtonPressed += this.ExtendedButtonPressedMods;
+            Helper.Events.Input.CursorMoved += this.CursorMovedMods;
+            Helper.Events.Input.MouseWheelScrolled += this.MouseWheelScrolled;
+            Helper.Events.Input.ButtonReleased += this.ButtonReleasedMods;
+            Helper.Events.GameLoop.UpdateTicked += this.UpdateTickMods;
+            Helper.Events.Player.Warped += this.WarpedMods;
+            Helper.Events.Display.Rendered += this.RenderedEvents;
 
             StartPatching();
+            pathFindingHelper = new PathFindingHelper(this.Monitor);
 
             ModEntry.config = this.Helper.ReadConfig<ModConfig>();
         }
 
-        private void GameEvents_UpdateTick(object sender, EventArgs e)
+        private void RenderedEvents(object sender, RenderedEventArgs e)
+        {
+            pathFindingHelper.drawThing(e.SpriteBatch);
+            if (isMovingAutomaticaly && !isHoldingMove)
+                DrawHelper.drawBox(e.SpriteBatch, position_Destination);
+        }
+
+        private void UpdateTickMods(object sender, EventArgs e)
         {
             bool flag = Context.IsWorldReady;
 
@@ -163,8 +174,9 @@ namespace MouseMoveMode
             }
         }
 
-        private void PlayerEvents_Warped(object sender, WarpedEventArgs e)
+        private void WarpedMods(object sender, WarpedEventArgs e)
         {
+            pathFindingHelper.loadMap();
             isMovingAutomaticaly = false;
             // There are location that player's new position (after warp) is too close to new warp
             // This prevent warp back to back
@@ -195,7 +207,7 @@ namespace MouseMoveMode
             }
         }
 
-        private void ExtendedMode_InputEvents_ButtonPressed(object sender, ButtonPressedEventArgs e)
+        private void ExtendedButtonPressedMods(object sender, ButtonPressedEventArgs e)
         {
             if (!config.ExtendedModeDefault)
                 return;
@@ -212,7 +224,7 @@ namespace MouseMoveMode
             }
         }
 
-        private void MouseMoveMode_InputEvents_ButtonPressed(object sender, ButtonPressedEventArgs e)
+        private void ButtonPressedMods(object sender, ButtonPressedEventArgs e)
         {
             string button = e.Button.ToString();
 
@@ -405,7 +417,7 @@ namespace MouseMoveMode
         }
 
 
-        private void Input_MouseWheelScrolled(object sender, MouseWheelScrolledEventArgs e)
+        private void MouseWheelScrolled(object sender, MouseWheelScrolledEventArgs e)
         {
             bool flag = Context.IsWorldReady;
 
@@ -442,7 +454,7 @@ namespace MouseMoveMode
             }
         }
 
-        private void Input_CursorMoved(object sender, CursorMovedEventArgs e)
+        private void CursorMovedMods(object sender, CursorMovedEventArgs e)
         {
             bool flag = Context.IsWorldReady;
 
@@ -454,7 +466,7 @@ namespace MouseMoveMode
                 }
         }
 
-        private void InputEvents_ButtonReleased(object sender, ButtonReleasedEventArgs e)
+        private void ButtonReleasedMods(object sender, ButtonReleasedEventArgs e)
         {
             string button = e.Button.ToString();
 
@@ -633,6 +645,8 @@ namespace MouseMoveMode
                 {
                     isBeingAutoCommand = true;
                     MoveVectorToCommand();
+                    if (Vector2.Distance(position_Destination, pathFindingHelper.destination) > 1f)
+                        pathFindingHelper.changeDes(position_Destination);
 
                     if (isHoldingRunButton && !Game1.player.canOnlyWalk)
                     {
@@ -874,6 +888,10 @@ namespace MouseMoveMode
             if (Game1.player.movementDirections.Contains(faceDirection))
             {
                 Rectangle nextPos = Game1.player.nextPosition(faceDirection);
+                if (currentLocation.isCollidingPosition(nextPos, viewport, true, 0, false, Game1.player))
+                {
+                    pathFindingHelper.addNode(nextPos);
+                }
 
                 if (!currentLocation.isCollidingPosition(nextPos, viewport, true, 0, false, Game1.player))
                 {
@@ -903,8 +921,16 @@ namespace MouseMoveMode
                         Rectangle tmp = Game1.player.nextPosition(faceDirection);
                         tmp.Width /= 4;
                         bool leftCorner = currentLocation.isCollidingPosition(tmp, viewport, true, 0, false, Game1.player);
+                        if (leftCorner)
+                        {
+                            pathFindingHelper.addNode(tmp);
+                        }
                         tmp.X += tmp.Width * 3;
                         bool rightCorner = currentLocation.isCollidingPosition(tmp, viewport, true, 0, false, Game1.player);
+                        if (rightCorner)
+                        {
+                            pathFindingHelper.addNode(tmp);
+                        }
                         if (leftCorner && !rightCorner && !currentLocation.isCollidingPosition(Game1.player.nextPosition(LeftDirection(faceDirection)), viewport, true, 0, false, Game1.player))
                         {
                             if (faceDirection == 0 || faceDirection == 2)
