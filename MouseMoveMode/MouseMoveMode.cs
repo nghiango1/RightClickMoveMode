@@ -161,9 +161,10 @@ namespace MouseMoveMode
                 if (isTryToDoActionAtClickedTitle == 2)
                 {
                     position_Destination = pointedNPC.Position;
+                    pathFindingHelper.changeDes(position_Destination);
                 }
-                vector_PlayerToDestination.X = position_Destination.X - Game1.player.GetBoundingBox().Center.X;
-                vector_PlayerToDestination.Y = position_Destination.Y - Game1.player.GetBoundingBox().Center.Y;
+                vector_PlayerToDestination.X = pathFindingHelper.nextPath().X  - Game1.player.GetBoundingBox().Center.X;
+                vector_PlayerToDestination.Y = pathFindingHelper.nextPath().Y  - Game1.player.GetBoundingBox().Center.Y;
             }
 
             if (Game1.player.ActiveObject != null)
@@ -310,9 +311,11 @@ namespace MouseMoveMode
                 {
                     position_Destination.X = position_MouseOnScreen.X + Game1.viewport.X;
                     position_Destination.Y = position_MouseOnScreen.Y + Game1.viewport.Y;
+                    pathFindingHelper.changeDes(position_Destination);
 
-                    vector_PlayerToDestination.X = position_Destination.X - Game1.player.GetBoundingBox().Center.X;
-                    vector_PlayerToDestination.Y = position_Destination.Y - Game1.player.GetBoundingBox().Center.Y;
+                    vector_PlayerToDestination.X = pathFindingHelper.nextPath().X  - Game1.player.GetBoundingBox().Center.X;
+                    vector_PlayerToDestination.Y = pathFindingHelper.nextPath().Y  - Game1.player.GetBoundingBox().Center.Y;
+
                     grabTile = new Vector2((float)(position_MouseOnScreen.X + Game1.viewport.X), (float)(position_MouseOnScreen.Y + Game1.viewport.Y)) / 64f;
 
                     isMovingAutomaticaly = true;
@@ -548,15 +551,9 @@ namespace MouseMoveMode
             if (flag)
             {
                 if (isHoldingMove)
-                {
-                    vector_AutoMove.X = vector_PlayerToMouse.X;
-                    vector_AutoMove.Y = vector_PlayerToMouse.Y;
-                }
+                    vector_AutoMove = vector_PlayerToMouse;
                 else
-                {
-                    vector_AutoMove.X = vector_PlayerToDestination.X;
-                    vector_AutoMove.Y = vector_PlayerToDestination.Y;
-                }
+                    vector_AutoMove = vector_PlayerToDestination;
 
                 TryToCheckGrapTile();
 
@@ -647,9 +644,6 @@ namespace MouseMoveMode
                 {
                     isBeingAutoCommand = true;
                     MoveVectorToCommand();
-                    if (Vector2.Distance(position_Destination, pathFindingHelper.destination) > 1f)
-                        pathFindingHelper.changeDes(position_Destination);
-
                     if (isHoldingRunButton && !Game1.player.canOnlyWalk)
                     {
                         Game1.player.setRunning(!Game1.options.autoRun, false);
