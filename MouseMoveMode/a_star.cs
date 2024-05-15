@@ -58,6 +58,27 @@ namespace MouseMoveMode
         }
 
         /**
+         * @brief Draw a mini box point in the current game location
+         *
+         * @param b can access via Event Rendered input `e.SpriteBatch`
+         * @param posistion X,Y point to be draw on screen
+         */
+        public static void drawBox(SpriteBatch b, Vector2 posistion, Color color)
+        {
+            var texture2D = Game1.mouseCursors;
+            var position = Game1.GlobalToLocal(Game1.viewport, posistion);
+            var sourceRectangle = new Rectangle(194, 388, 16, 16);
+            var rotation = 0f;
+            var origin = new Vector2(1f, 4f);
+            var scale = 1.5f;
+            var effect = SpriteEffects.None;
+            // Same layer with tool effective range indicator (green tilte appeared when you powering the tool)
+            var layerDepth = 0.01f;
+
+            b.Draw(texture2D, position, sourceRectangle, color, rotation, origin, scale, effect, layerDepth);
+        }
+
+        /**
          * @brief This allow drawing box exactly along the rectangle position
          *
          * @param b 
@@ -424,7 +445,6 @@ namespace MouseMoveMode
                 Vector2 p = this.path.Peek();
                 if (Vector2.Distance(p, start) > this.microDelta)
                 {
-                    this.Monitor.Log("At " + start + " go to " + p, LogLevel.Info);
                     return this.toPosition(p);
                 }
                 this.path.Pop();

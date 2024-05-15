@@ -88,7 +88,7 @@ namespace MouseMoveMode
         {
             if (isMovingAutomaticaly && !isHoldingMove)
             {
-                DrawHelper.drawBox(e.SpriteBatch, position_Destination);
+                DrawHelper.drawBox(e.SpriteBatch, position_Destination, Color.Red);
                 pathFindingHelper.drawThing(e.SpriteBatch);
             }
         }
@@ -163,8 +163,8 @@ namespace MouseMoveMode
                     position_Destination = pointedNPC.Position;
                     pathFindingHelper.changeDes(position_Destination);
                 }
-                vector_PlayerToDestination.X = pathFindingHelper.nextPath().X  - Game1.player.GetBoundingBox().Center.X;
-                vector_PlayerToDestination.Y = pathFindingHelper.nextPath().Y  - Game1.player.GetBoundingBox().Center.Y;
+                vector_PlayerToDestination.X = pathFindingHelper.nextPath().X - Game1.player.GetBoundingBox().Center.X;
+                vector_PlayerToDestination.Y = pathFindingHelper.nextPath().Y - Game1.player.GetBoundingBox().Center.Y;
             }
 
             if (Game1.player.ActiveObject != null)
@@ -313,8 +313,8 @@ namespace MouseMoveMode
                     position_Destination.Y = position_MouseOnScreen.Y + Game1.viewport.Y;
                     pathFindingHelper.changeDes(position_Destination);
 
-                    vector_PlayerToDestination.X = pathFindingHelper.nextPath().X  - Game1.player.GetBoundingBox().Center.X;
-                    vector_PlayerToDestination.Y = pathFindingHelper.nextPath().Y  - Game1.player.GetBoundingBox().Center.Y;
+                    vector_PlayerToDestination.X = pathFindingHelper.nextPath().X - Game1.player.GetBoundingBox().Center.X;
+                    vector_PlayerToDestination.Y = pathFindingHelper.nextPath().Y - Game1.player.GetBoundingBox().Center.Y;
 
                     grabTile = new Vector2((float)(position_MouseOnScreen.X + Game1.viewport.X), (float)(position_MouseOnScreen.Y + Game1.viewport.Y)) / 64f;
 
