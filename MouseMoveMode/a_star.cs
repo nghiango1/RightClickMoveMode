@@ -9,6 +9,12 @@ namespace MouseMoveMode
 {
     class DrawHelper
     {
+        /**
+         * @brief Draw a box in the current game location
+         *
+         * @param b can access via Event Rendered input `e.SpriteBatch`
+         * @param boxPosistion A rectangle tobe draw on screen
+         */
         public static void drawRedBox(SpriteBatch b, Rectangle boxPosistion)
         {
             // This have full texture2D
@@ -29,6 +35,12 @@ namespace MouseMoveMode
             b.Draw(texture2D, position, sourceRectangle, color, rotation, origin, scale, effect, layerDepth);
         }
 
+        /**
+         * @brief Draw a mini box point in the current game location
+         *
+         * @param b can access via Event Rendered input `e.SpriteBatch`
+         * @param posistion X,Y point to be draw on screen
+         */
         public static void drawBox(SpriteBatch b, Vector2 posistion)
         {
             var texture2D = Game1.mouseCursors;
@@ -73,6 +85,9 @@ namespace MouseMoveMode
         }
     }
 
+    /**
+     * @brief This contain a set of rectangle that can be print to screen
+     */
     class Node
     {
         public Rectangle boundingBox;
@@ -105,9 +120,10 @@ namespace MouseMoveMode
     class PathFindingHelper
     {
         private List<Node> nodes;
-        private bool[,] isPassable = new bool[128, 128];
 
         private IMonitor Monitor;
+        private float microDelta = 0.0001f;
+        private Dictionary<Vector2, bool> cacheIsPassable = new Dictionary<Vector2, bool>();
 
         private PriorityQueue<Vector2, float> pq;
         private HashSet<Vector2> visited;
@@ -126,10 +142,19 @@ namespace MouseMoveMode
 
         public void drawThing(SpriteBatch b)
         {
-            foreach (var item in nodes)
+            foreach (var node in this.nodes)
             {
-                item.draw(b);
+                node.draw(b);
             }
+            foreach (var cached in this.cacheIsPassable)
+            {
+                if (cached.Value)
+                {
+                    continue;
+                }
+                DrawHelper.drawRedBox(b, new Rectangle((int)cached.Key.X * 64, (int)cached.Key.Y * 64, 64, 64));
+            }
+
             if (this.path is not null)
             {
                 foreach (var node in this.path)
@@ -146,32 +171,140 @@ namespace MouseMoveMode
             nodes.Add(node);
         }
 
-        public void loadMap()
+        /**
+         * @brief This use tile (a scale down 1/64 from game true position)
+         *
+         * @param x tile value in X-axis
+         * @param y tile value in Y-axis
+         * @return if the current tile is passable
+         */
+        public bool isTilePassable(float x, float y)
         {
-            nodes.Clear();
+            return isTilePassable(new Vector2(x, y));
+        }
+
+        public bool isTilePassable(Vector2 tile)
+        {
+            if (this.cacheIsPassable.ContainsKey(tile))
+            {
+                return this.cacheIsPassable[tile];
+            }
+
             GameLocation gl = Game1.player.currentLocation;
-            for (int i = 0; i < 128; i += 1)
-                for (int j = 0; j < 128; j += 1)
-                {
-                    isPassable[i, j] = gl.isTilePassable(new Vector2(i, j));
-                    if (!isPassable[i, j])
-                    {
-                        nodes.Add(new Node(i * 64, j * 64, 64, 64));
-                    }
-                }
+            if (!gl.isTilePassable(tile))
+            {
+                return false;
+            }
 
             foreach (var item in gl.buildings)
             {
                 Rectangle box = item.GetBoundingBox();
-                var node = new Node(box);
-                this.Monitor.Log(String.Format("{0}:{1}", item, node), LogLevel.Info);
-                nodes.Add(node);
+                if (!item.isTilePassable(tile))
+                {
+                    this.cacheIsPassable[tile] = false;
+                    return false;
+                }
+            }
+
+            foreach (var items in gl.terrainFeatures)
+            {
+                if (!items.ContainsKey(tile))
+                {
+                    continue;
+                }
+                if (items[tile].isPassable())
+                {
+                    continue;
+                }
+                this.cacheIsPassable[tile] = false;
+                return false;
+            }
+
+            foreach (var item in gl.largeTerrainFeatures)
+            {
+                if (item.isPassable())
+                {
+                    continue;
+                }
+                if (!toTiles(item.getBoundingBox()).Contains(tile))
+                {
+                    continue;
+                }
+                this.cacheIsPassable[tile] = false;
+                return false;
+            }
+
+            this.cacheIsPassable[tile] = true;
+            return true;
+        }
+
+        public void loadMap()
+        {
+            this.nodes.Clear();
+            this.cacheIsPassable.Clear();
+            for (int i = 0; i < 128; i += 1)
+                for (int j = 0; j < 128; j += 1)
+                {
+                    var tile = new Vector2(i, j);
+                    if (!isTilePassable(tile))
+                    {
+                        if (!this.cacheIsPassable.ContainsKey(tile))
+                            this.cacheIsPassable.Add(tile, false);
+                    }
+                }
+
+            GameLocation gl = Game1.player.currentLocation;
+
+            foreach (var items in gl.terrainFeatures)
+            {
+                foreach (var item in items)
+                {
+                    Rectangle box = item.Value.getBoundingBox();
+                    if (item.Value.isPassable())
+                        continue;
+                    this.Monitor.Log(item.ToString(), LogLevel.Info);
+                    foreach (var tile in toTiles(box))
+                    {
+                        this.Monitor.Log(tile.ToString(), LogLevel.Info);
+                        if (!this.cacheIsPassable.ContainsKey(tile))
+                            this.cacheIsPassable.Add(tile, false);
+                    }
+                }
+            }
+
+            foreach (var item in gl.largeTerrainFeatures)
+            {
+                Rectangle box = item.getBoundingBox();
+                if (item.isPassable())
+                    continue;
+                this.Monitor.Log(item.ToString(), LogLevel.Info);
+                foreach (var tile in toTiles(box))
+                {
+                    this.Monitor.Log(item.ToString(), LogLevel.Info);
+                    if (!this.cacheIsPassable.ContainsKey(tile))
+                        this.cacheIsPassable.Add(tile, false);
+                }
             }
         }
 
         public Vector2 toTile(Vector2 position)
         {
-            return new Vector2((float)Math.Round(position.X/64f), (float)Math.Round(position.Y/64f));
+            return new Vector2((float)Math.Round(position.X / 64f), (float)Math.Round(position.Y / 64f));
+        }
+
+        public List<Vector2> toTiles(Rectangle box)
+        {
+            var res = new List<Vector2>();
+            var x = (int)Math.Round(box.X / 64f);
+            var y = (int)Math.Round(box.Y / 64f);
+            var w = (int)Math.Round(box.Width / 64f);
+            var h = (int)Math.Round(box.Height / 64f);
+            for (int i = x; i < x + w; i++)
+                for (int j = y; j < y + h; j++)
+                {
+                    res.Add(new Vector2(i, j));
+                }
+            return res;
         }
 
         public Vector2 changeDes(Vector2 destination)
@@ -195,11 +328,17 @@ namespace MouseMoveMode
 
             gScore.Add(start, 0);
             fScore.Add(start, Vector2.Distance(start, destinationTile));
+            this.nodes.Clear();
 
-            while (pq.Count > 0)
+            // I just too dumb so let limit the time we try to find best past
+            // we have a quite small available click screen so it fine as long
+            // as the limit can match the total screen tile
+            int limit = 1000;
+            while (pq.Count > 0 && limit > 0)
             {
+                limit -= 1;
                 var current = pq.Dequeue();
-                if (Vector2.Distance(current, destinationTile) < 1f)
+                if (Vector2.Distance(current, destinationTile) < this.microDelta)
                 {
                     return updatePath();
                 }
@@ -208,9 +347,11 @@ namespace MouseMoveMode
                     for (int j = -1; j <= 1; j += 1)
                     {
                         Vector2 neighbor = current + new Vector2(i, j);
-                        if ((i == 0 && j == 0) || !gl.isTilePassable(neighbor))
+                        if ((i == 0 && j == 0) || !gl.isTilePassable(neighbor) || visited.Contains(neighbor))
                             continue;
 
+                        visited.Add(neighbor);
+                        this.nodes.Add(new Node((int)neighbor.X * 64, (int)neighbor.Y * 64, 64, 64));
                         var temp = gScore[current] + Vector2.Distance(current, neighbor);
                         if (gScore.ContainsKey(neighbor))
                         {
@@ -231,15 +372,12 @@ namespace MouseMoveMode
                             gScore.Add(neighbor, temp);
                             fScore.Add(neighbor, temp + Vector2.Distance(neighbor, destinationTile));
                         }
-                        if (!visited.Contains(neighbor))
+
+                        pq.Enqueue(neighbor, fScore[neighbor]);
+                        if (bestScore > temp + Vector2.Distance(neighbor, destinationTile))
                         {
-                            visited.Add(neighbor);
-                            pq.Enqueue(neighbor, fScore[neighbor]);
-                            if (bestScore > temp + Vector2.Distance(neighbor, destinationTile))
-                            {
-                                bestScore = temp + Vector2.Distance(neighbor, destinationTile);
-                                bestScoreTile = neighbor;
-                            }
+                            bestScore = temp + Vector2.Distance(neighbor, destinationTile);
+                            bestScoreTile = neighbor;
                         }
                     }
             }
@@ -254,11 +392,12 @@ namespace MouseMoveMode
             Vector2 desTile = toTile(this.destination);
             Vector2 start = Game1.player.Tile;
             Vector2 p = desTile;
-            while (Vector2.Distance(this.cameFrom[p], start) > 1f)
+            while (Vector2.Distance(p, start) > this.microDelta)
             {
                 this.path.Push(p);
                 p = this.cameFrom[p];
-            };
+            }
+            this.path.Push(start);
             return this.path.Peek();
         }
 
@@ -266,7 +405,7 @@ namespace MouseMoveMode
         {
             Vector2 start = toTile(Game1.player.Tile);
             Vector2 p = this.path.Peek();
-            if (Vector2.Distance(p, start) > 1f)
+            if (Vector2.Distance(p, start) > this.microDelta)
             {
                 return this.path.Peek();
             }

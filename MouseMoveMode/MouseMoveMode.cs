@@ -86,9 +86,11 @@ namespace MouseMoveMode
 
         private void RenderedEvents(object sender, RenderedEventArgs e)
         {
-            pathFindingHelper.drawThing(e.SpriteBatch);
             if (isMovingAutomaticaly && !isHoldingMove)
+            {
                 DrawHelper.drawBox(e.SpriteBatch, position_Destination);
+                pathFindingHelper.drawThing(e.SpriteBatch);
+            }
         }
 
         private void UpdateTickMods(object sender, EventArgs e)
@@ -888,10 +890,6 @@ namespace MouseMoveMode
             if (Game1.player.movementDirections.Contains(faceDirection))
             {
                 Rectangle nextPos = Game1.player.nextPosition(faceDirection);
-                if (currentLocation.isCollidingPosition(nextPos, viewport, true, 0, false, Game1.player))
-                {
-                    pathFindingHelper.addNode(nextPos);
-                }
 
                 if (!currentLocation.isCollidingPosition(nextPos, viewport, true, 0, false, Game1.player))
                 {
@@ -921,16 +919,8 @@ namespace MouseMoveMode
                         Rectangle tmp = Game1.player.nextPosition(faceDirection);
                         tmp.Width /= 4;
                         bool leftCorner = currentLocation.isCollidingPosition(tmp, viewport, true, 0, false, Game1.player);
-                        if (leftCorner)
-                        {
-                            pathFindingHelper.addNode(tmp);
-                        }
                         tmp.X += tmp.Width * 3;
                         bool rightCorner = currentLocation.isCollidingPosition(tmp, viewport, true, 0, false, Game1.player);
-                        if (rightCorner)
-                        {
-                            pathFindingHelper.addNode(tmp);
-                        }
                         if (leftCorner && !rightCorner && !currentLocation.isCollidingPosition(Game1.player.nextPosition(LeftDirection(faceDirection)), viewport, true, 0, false, Game1.player))
                         {
                             if (faceDirection == 0 || faceDirection == 2)
