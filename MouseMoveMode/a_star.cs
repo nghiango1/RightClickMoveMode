@@ -49,7 +49,7 @@ namespace MouseMoveMode
             var color = Color.White;
             var rotation = 0f;
             var origin = new Vector2(1f, 4f);
-            var scale = 1.2f;
+            var scale = 1.5f;
             var effect = SpriteEffects.None;
             // Same layer with tool effective range indicator (green tilte appeared when you powering the tool)
             var layerDepth = 0.01f;
@@ -142,24 +142,24 @@ namespace MouseMoveMode
 
         public void drawThing(SpriteBatch b)
         {
-            foreach (var node in this.nodes)
-            {
-                node.draw(b);
-            }
-            foreach (var cached in this.cacheIsPassable)
-            {
-                if (cached.Value)
-                {
-                    continue;
-                }
-                DrawHelper.drawRedBox(b, new Rectangle((int)cached.Key.X * 64, (int)cached.Key.Y * 64, 64, 64));
-            }
+            //foreach (var node in this.nodes)
+            //{
+            //    node.draw(b);
+            //}
+            //foreach (var cached in this.cacheIsPassable)
+            //{
+            //    if (cached.Value)
+            //    {
+            //        continue;
+            //    }
+            //    DrawHelper.drawRedBox(b, new Rectangle((int)cached.Key.X * 64, (int)cached.Key.Y * 64, 64, 64));
+            //}
 
             if (this.path is not null)
             {
                 foreach (var node in this.path)
                 {
-                    DrawHelper.drawBox(b, new Rectangle((int)node.X * 64, (int)node.Y * 64, 64, 64));
+                    DrawHelper.drawBox(b, toPosition(node));
                 }
             }
         }
@@ -287,6 +287,11 @@ namespace MouseMoveMode
             }
         }
 
+        public Vector2 toPosition(Vector2 tile)
+        {
+            return new Vector2((float)Math.Round(tile.X * 64f) + 32f, (float)Math.Round(tile.Y * 64f) + 32f);
+        }
+
         public Vector2 toTile(Vector2 position)
         {
             return new Vector2((float)Math.Round(position.X / 64f), (float)Math.Round(position.Y / 64f));
@@ -349,6 +354,14 @@ namespace MouseMoveMode
                         Vector2 neighbor = current + new Vector2(i, j);
                         if ((i == 0 && j == 0) || !this.isTilePassable(neighbor) || visited.Contains(neighbor))
                             continue;
+                        // diagonal special case handling
+                        if (Vector2.Distance(current, neighbor) > 1.2f)
+                        {
+                            if (!this.isTilePassable(current.X, neighbor.Y) && !this.isTilePassable(neighbor.X, current.Y))
+                            {
+                                continue;
+                            }
+                        }
 
                         visited.Add(neighbor);
                         this.nodes.Add(new Node((int)neighbor.X * 64, (int)neighbor.Y * 64, 64, 64));
@@ -374,15 +387,15 @@ namespace MouseMoveMode
                         }
 
                         pq.Enqueue(neighbor, fScore[neighbor]);
-                        if (bestScore > temp + Vector2.Distance(neighbor, destinationTile))
+                        if (bestScore > Vector2.Distance(neighbor, destinationTile))
                         {
-                            bestScore = temp + Vector2.Distance(neighbor, destinationTile);
+                            bestScore = Vector2.Distance(neighbor, destinationTile);
                             bestScoreTile = neighbor;
                         }
                     }
             }
 
-            this.destination = new Vector2(bestScoreTile.X * 64, bestScoreTile.Y * 64);
+            this.destination = this.toPosition(bestScoreTile);
             return updatePath();
         }
 
@@ -403,14 +416,22 @@ namespace MouseMoveMode
 
         public Vector2 nextPath()
         {
-            Vector2 start = toTile(Game1.player.Tile);
-            Vector2 p = this.path.Peek();
-            if (Vector2.Distance(p, start) > this.microDelta)
+            Vector2 start = Game1.player.Tile;
+            if (this.path is null)
+                return start;
+            if (this.path.Count > 0)
             {
-                return this.path.Peek();
+                Vector2 p = this.path.Peek();
+                if (Vector2.Distance(p, start) > this.microDelta)
+                {
+                    this.Monitor.Log("At " + start + " go to " + p, LogLevel.Info);
+                    return this.toPosition(p);
+                }
+                this.path.Pop();
+                return nextPath();
             }
-            this.path.Pop();
-            return this.path.Peek();
+            else
+                return this.destination;
         }
     }
 }
