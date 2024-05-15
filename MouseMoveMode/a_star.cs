@@ -347,7 +347,7 @@ namespace MouseMoveMode
                     for (int j = -1; j <= 1; j += 1)
                     {
                         Vector2 neighbor = current + new Vector2(i, j);
-                        if ((i == 0 && j == 0) || !gl.isTilePassable(neighbor) || visited.Contains(neighbor))
+                        if ((i == 0 && j == 0) || !this.isTilePassable(neighbor) || visited.Contains(neighbor))
                             continue;
 
                         visited.Add(neighbor);
