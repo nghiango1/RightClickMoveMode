@@ -352,7 +352,6 @@ namespace MouseMoveMode
 
         private int GetActionType(ref Vector2 grabTile)
         {
-
             // There is 5 type:
             // 1 is for Object is 1x1 tile size but with 2x1 hit box (Chess, ...)
             // 2 is for NPC
