@@ -18,12 +18,12 @@ namespace MouseMoveMode
 
         public DrawableNode(Vector2 position, int width = 32, int height = 32)
         {
-            this.box = new Rectangle((int)position.X, (int)position.Y, width, height);
+            this.box = new Rectangle((int)position.X - width / 2, (int)position.Y - height / 2, width, height);
         }
 
         public DrawableNode(int x, int y, int width = 32, int height = 32)
         {
-            this.box = new Rectangle(x, y, width, height);
+            this.box = new Rectangle(x - width / 2, y - height / 2, width, height);
         }
 
         public void draw(SpriteBatch b)
