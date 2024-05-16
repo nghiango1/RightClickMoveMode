@@ -9,17 +9,22 @@ namespace MouseMoveMode
 {
     class PathFindingHelper
     {
-        private List<DrawableNode> nodes = new List<DrawableNode>();
+        private List<DrawableNode> visitedNodes = new List<DrawableNode>();
+        private Stack<DrawableNode> pathNodes = new Stack<DrawableNode>();
 
         private IMonitor Monitor;
-        private float microDelta = 0.0001f;
+        private float microTileDelta = 0.0001f;
+        private float microPositionDelta = 60f;
 
         private PriorityQueue<Vector2, float> pq = new PriorityQueue<Vector2, float>();
         private HashSet<Vector2> visited = new HashSet<Vector2>();
         private Dictionary<Vector2, Vector2> cameFrom = new Dictionary<Vector2, Vector2>();
-        public Vector2 destination;
-        private Vector2 destinationTile;
-        private Stack<Vector2> path;
+        private Dictionary<Vector2, float> gScore = new Dictionary<Vector2, float>();
+        private Dictionary<Vector2, float> fScore = new Dictionary<Vector2, float>();
+
+        private Vector2 destination = new Vector2(0, 0);
+        private Vector2 destinationTile = new Vector2(0, 0);
+        private Stack<Vector2> path = new Stack<Vector2>();
 
         public bool useBetter = false;
         public bool debugCheckedTile = false;
@@ -27,7 +32,20 @@ namespace MouseMoveMode
 
         private int step;
 
-        public PathFindingHelper(IMonitor im, bool useBetter = false, bool debugCheckedTile = false, bool debugPassable = true)
+        public void flushCache()
+        {
+            this.pq.Clear();
+            this.visited.Clear();
+            this.cameFrom.Clear();
+            this.gScore.Clear();
+            this.fScore.Clear();
+            this.path.Clear();
+
+            this.visitedNodes.Clear();
+            this.pathNodes.Clear();
+        }
+
+        public PathFindingHelper(IMonitor im, bool useBetter = false, bool debugCheckedTile = false, bool debugPassable = false)
         {
             this.Monitor = im;
             this.useBetter = useBetter;
@@ -35,62 +53,50 @@ namespace MouseMoveMode
             this.debugPassable = debugPassable;
         }
 
+        public void drawVisitedNodes(SpriteBatch b)
+        {
+            foreach (var node in this.visitedNodes)
+                node.draw(b, Color.Aqua);
+        }
+
+        public void drawPath(SpriteBatch b)
+        {
+            foreach (var node in this.pathNodes)
+                node.draw(b);
+        }
+
         public void drawThing(SpriteBatch b)
         {
             if (this.debugCheckedTile)
-            {
-                foreach (var node in this.nodes)
-                {
-                    node.draw(b);
-                }
-            }
+                this.drawVisitedNodes(b);
 
             if (this.debugPassable)
-            {
                 Util.drawPassable(b);
-            }
 
-            if (this.path is not null)
-            {
-                foreach (var node in this.path)
-                {
-                    DrawHelper.drawBox(b, Util.toPosition(node));
-                }
-            }
-        }
-
-        public void addNode(Rectangle box)
-        {
-            var node = new DrawableNode(box);
-            this.Monitor.Log(String.Format("Manual: {0}", node), LogLevel.Info);
-            nodes.Add(node);
+            this.drawPath(b);
         }
 
         public void loadMap()
         {
-            this.nodes.Clear();
+            this.flushCache();
             Util.flushCache();
         }
 
-        public Vector2 changeDes(Vector2 destination)
+        public void changeDes(Vector2 destination)
         {
-            return aStarPathFinding(destination);
+            this.flushCache();
+            Util.flushCache();
+            aStarPathFinding(destination);
         }
 
-        public Vector2 aStarPathFinding(Vector2 destination)
+        public void aStarPathFinding(Vector2 destination)
         {
             GameLocation gl = Game1.player.currentLocation;
             this.destination = destination;
+
+            // This preventing error when changing or rounding destinaltion multiple times
             this.destinationTile = Util.toTile(this.destination);
-
-            this.visited.Clear();
-
-            this.pq.Clear();
             this.pq.Enqueue(Game1.player.Tile, 0);
-
-            this.cameFrom.Clear();
-            var gScore = new Dictionary<Vector2, float>();
-            var fScore = new Dictionary<Vector2, float>();
 
             Vector2 start = Game1.player.Tile;
             Vector2 bestScoreTile = start;
@@ -98,7 +104,6 @@ namespace MouseMoveMode
 
             gScore.Add(start, 0);
             fScore.Add(start, Vector2.Distance(Game1.player.Position, this.destination));
-            this.nodes.Clear();
 
             // I just too dumb so let limit the time we try to find best past
             // we have a quite small available click screen so it fine as long
@@ -108,26 +113,34 @@ namespace MouseMoveMode
             {
                 limit -= 1;
                 var current = pq.Dequeue();
-                if (Vector2.Distance(Util.toPosition(current), this.destination) < 33f)
+                if (Vector2.Distance(this.destination, Util.toPosition(current)) < this.microPositionDelta)
                 {
                     this.destinationTile = current;
                     //this.Monitor.Log("Found path!", LogLevel.Info);
-                    return updatePath();
+                    updatePath();
+                    return;
                 }
 
-                if (Vector2.Distance(current, this.destinationTile) < this.microDelta)
+                // Being extra cautious here, as this is the true end for a_star
+                if (Vector2.Distance(current, this.destinationTile) < this.microTileDelta)
                 {
                     this.destinationTile = current;
                     //this.Monitor.Log("Found path!", LogLevel.Info);
-                    return updatePath();
+                    updatePath();
+                    return;
                 }
 
+                List<Vector2> neighborList = new List<Vector2>();
                 for (int i = -1; i <= 1; i += 1)
                     for (int j = -1; j <= 1; j += 1)
                     {
-                        Vector2 neighbor = current + new Vector2(i, j);
-                        if ((i == 0 && j == 0) || !Util.isTilePassable(neighbor) || visited.Contains(neighbor))
+                        if (i == 0 && j == 0)
                             continue;
+                        Vector2 neighbor = current + new Vector2(i, j);
+                        // tile isn't passable or already visited
+                        if (!Util.isTilePassable(neighbor) || visited.Contains(neighbor))
+                            continue;
+
                         // diagonal special case handling, just don't do it if there is a blockage
                         if (Vector2.Distance(current, neighbor) > 1.2f)
                         {
@@ -137,20 +150,20 @@ namespace MouseMoveMode
                             }
                         }
 
-                        // horse riding will make player bigger, which can't go up and down into 1 tile gap
+                        // horse riding will make player bigger, which can't go up and down into 1 tile gap. Skip anything like this
+                        // ?-any, O-passable, X-unpassable, P-current tile
+                        //
+                        // ?O?    OOX    OO?    XOO    ?OO
+                        // XPX    XP?    XP?    ?PX    ?PX
+                        // ?O?    OO?    OOX    ?OO    XOO
                         if (Game1.player.isRidingHorse())
                         {
                             if (!Util.isTilePassable(neighbor.X - 1, neighbor.Y))
                             {
                                 bool check = false;
-                                for (int z = -1; z <= 1; z += 1)
-                                {
-                                    if (!Util.isTilePassable(neighbor.X + 1, neighbor.Y + z))
-                                    {
-                                        check = true;
-                                        break;
-                                    }
-                                }
+                                check = check || !Util.isTilePassable(neighbor.X + 1, neighbor.Y - 1);
+                                check = check || !Util.isTilePassable(neighbor.X + 1, neighbor.Y);
+                                check = check || !Util.isTilePassable(neighbor.X + 1, neighbor.Y + 1);
                                 if (check)
                                     continue;
                             }
@@ -158,101 +171,134 @@ namespace MouseMoveMode
                             if (!Util.isTilePassable(neighbor.X + 1, neighbor.Y))
                             {
                                 bool check = false;
-                                for (int z = -1; z <= 1; z += 1)
-                                {
-                                    if (!Util.isTilePassable(neighbor.X - 1, neighbor.Y + z))
-                                    {
-                                        check = true;
-                                        break;
-                                    }
-                                }
+                                check = check || !Util.isTilePassable(neighbor.X - 1, neighbor.Y - 1);
+                                check = check || !Util.isTilePassable(neighbor.X - 1, neighbor.Y + 1);
                                 if (check)
                                     continue;
                             }
                         }
 
-                        visited.Add(neighbor);
-                        this.nodes.Add(new DrawableNode((int)neighbor.X * 64, (int)neighbor.Y * 64, 64, 64));
-                        var temp = gScore[current] + Vector2.Distance(Util.toPosition(current), Util.toPosition(neighbor));
-                        if (gScore.ContainsKey(neighbor))
+                        // Pass all checked, this tile could be consider to be use
+                        neighborList.Add(neighbor);
+                    }
+
+                foreach (var neighbor in neighborList)
+                {
+                    visited.Add(neighbor);
+                    this.visitedNodes.Add(new DrawableNode(Util.toBoxPosition(neighbor)));
+
+                    var temp = gScore[current] + Vector2.Distance(Util.toPosition(current), Util.toPosition(neighbor));
+                    if (gScore.ContainsKey(neighbor))
+                    {
+                        if (gScore[neighbor] < temp)
                         {
-                            if (gScore[neighbor] < temp)
-                            {
-                                continue;
-                            }
-                            else
-                            {
-                                this.cameFrom[neighbor] = current;
-                                gScore[neighbor] = temp;
-                                fScore[neighbor] = temp + (float)Math.Pow(Vector2.Distance(Util.toPosition(neighbor), this.destination), 2);
-                            }
+                            continue;
                         }
                         else
                         {
-                            this.cameFrom.Add(neighbor, current);
-                            gScore.Add(neighbor, temp);
-                            fScore.Add(neighbor, temp + (float)Math.Pow(Vector2.Distance(Util.toPosition(neighbor), this.destination), 2));
-                        }
-
-                        pq.Enqueue(neighbor, fScore[neighbor]);
-                        if (bestScore > Vector2.Distance(Util.toPosition(neighbor), this.destination))
-                        {
-                            bestScore = Vector2.Distance(Util.toPosition(neighbor), this.destination);
-                            bestScoreTile = neighbor;
+                            this.cameFrom[neighbor] = current;
+                            gScore[neighbor] = temp;
+                            fScore[neighbor] = temp + (float)Math.Pow(Vector2.Distance(Util.toPosition(neighbor), this.destination), 2);
                         }
                     }
+                    else
+                    {
+                        this.cameFrom.Add(neighbor, current);
+                        gScore.Add(neighbor, temp);
+                        fScore.Add(neighbor, temp + (float)Math.Pow(Vector2.Distance(Util.toPosition(neighbor), this.destination), 2));
+                    }
+
+                    pq.Enqueue(neighbor, fScore[neighbor]);
+                    if (bestScore > Vector2.Distance(Util.toPosition(neighbor), this.destination))
+                    {
+                        bestScore = Vector2.Distance(Util.toPosition(neighbor), this.destination);
+                        bestScoreTile = neighbor;
+                    }
+                }
             }
 
             this.destinationTile = bestScoreTile;
-            return updatePath();
+            updatePath();
         }
 
-        public Vector2 updatePath()
+        public void updatePath()
         {
-            this.path = new Stack<Vector2>();
-            Vector2 start = Game1.player.Tile;
-            Vector2 p = this.destinationTile;
-            while (Vector2.Distance(p, start) > this.microDelta)
+            this.path.Clear();
+            this.pathNodes.Push(new DrawableNode(this.destination));
+            Vector2 startTile = Game1.player.Tile;
+            Vector2 pointerTile = this.destinationTile;
+            while (Vector2.Distance(pointerTile, startTile) > this.microTileDelta)
             {
-                //this.Monitor.Log("Path: " + p, LogLevel.Info);
-                this.path.Push(p);
-                p = this.cameFrom[p];
+                var traceBackPosition = this.addPadding(pointerTile);
+                //this.Monitor.Log("Path: " + traceBackPosition, LogLevel.Info);
+                this.path.Push(traceBackPosition);
+
+                this.pathNodes.Push(new DrawableNode(traceBackPosition));
+                pointerTile = this.cameFrom[pointerTile];
             }
-            this.path.Push(start);
-            return this.path.Peek();
+
+            // Could be needed, but player already consider standing on this tile
+            // it for extra protection that player can still stuck for any reason
+            this.path.Push(Util.toPosition(startTile));
+            this.pathNodes.Push(new DrawableNode(startTile));
+        }
+
+        public Vector2 addPadding(Vector2 positionTile)
+        {
+            Rectangle box = Game1.player.GetBoundingBox();
+            var padX = 32;
+            var padY = 32;
+
+            // blockage on left side by any mean
+            bool checkLeft = !Util.isTilePassable(positionTile - new Vector2(-1, 0));
+            checkLeft = checkLeft || !Util.isTilePassable(positionTile - new Vector2(-1, -1));
+            checkLeft = checkLeft || !Util.isTilePassable(positionTile - new Vector2(-1, 1));
+
+            // blockage on right side by any mean
+            bool checkRight = !Util.isTilePassable(positionTile - new Vector2(1, 0));
+            checkRight = checkRight || !Util.isTilePassable(positionTile - new Vector2(1, -1));
+            checkRight = checkRight || !Util.isTilePassable(positionTile - new Vector2(1, 1));
+
+            if (checkLeft ^ checkRight)
+            {
+                if (checkLeft)
+                    padX = box.Width / 2;
+                if (checkRight)
+                    padX = 64 - box.Width / 2;
+            }
+
+            // blockage on top side by any mean
+            bool checkTop = !Util.isTilePassable(positionTile - new Vector2(-1, 1));
+            checkTop = checkTop || !Util.isTilePassable(positionTile - new Vector2(0, 1));
+            checkTop = checkTop || !Util.isTilePassable(positionTile - new Vector2(1, 1));
+
+            // blockage on bottom side by any mean
+            bool checkBottom = !Util.isTilePassable(positionTile - new Vector2(-1, -1));
+            checkBottom = checkBottom || !Util.isTilePassable(positionTile - new Vector2(0, -1));
+            checkBottom = checkBottom || !Util.isTilePassable(positionTile - new Vector2(1, -1));
+
+            if (checkTop ^ checkBottom)
+            {
+                if (checkTop)
+                    padY = box.Height / 2;
+                if (checkBottom)
+                    padY = 64 - box.Height / 2;
+            }
+            var res = Util.toPosition(positionTile, padX, padY);
+            return res;
         }
 
         public Vector2 nextPath()
         {
-            Vector2 start = Game1.player.Tile;
-            if (this.path is null)
-                return start;
-            if (this.path.Count > 0)
-            {
-                Vector2 p = this.path.Peek();
-                if (Vector2.Distance(p, start) > this.microDelta)
-                {
-
-                    var paddingX = 31f;
-                    // Sometime we want to go into the middle so horse can getin 2 tile gap
-                    if (Game1.player.isRidingHorse())
-                    {
-                        if (Game1.player.Tile.Y == p.Y)
-                        {
-                            paddingX = 63f;
-                            if (Util.isTilePassable(new Vector2(p.X + 1, p.Y)))
-                            {
-                                paddingX = 1f;
-                            }
-                        }
-                    }
-                    return Util.toPosition(p, paddingX: paddingX);
-                }
-                this.path.Pop();
-                return nextPath();
-            }
-            else
+            if (this.path.Count == 0)
                 return this.destination;
+
+            Vector2 next = this.path.Peek();
+            if (!Game1.player.GetBoundingBox().Contains(next))
+                return this.path.Peek();
+            this.path.Pop();
+            this.pathNodes.Pop();
+            return nextPath();
         }
     }
 }

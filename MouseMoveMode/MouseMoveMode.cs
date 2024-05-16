@@ -88,7 +88,6 @@ namespace MouseMoveMode
         {
             if (isMovingAutomaticaly && !isHoldingMove)
             {
-                DrawHelper.drawBox(e.SpriteBatch, position_Destination, Color.Red);
                 pathFindingHelper.drawThing(e.SpriteBatch);
             }
         }
@@ -163,6 +162,7 @@ namespace MouseMoveMode
                     position_Destination = pointedNPC.Position;
                     pathFindingHelper.changeDes(position_Destination);
                 }
+                //this.Monitor.Log(String.Format("{0} to {1} with distance {2}", Game1.player.Position, pathFindingHelper.nextPath(), Vector2.Distance(Game1.player.Position, pathFindingHelper.nextPath())), LogLevel.Info);
                 vector_PlayerToDestination.X = pathFindingHelper.nextPath().X - Game1.player.GetBoundingBox().Center.X;
                 vector_PlayerToDestination.Y = pathFindingHelper.nextPath().Y - Game1.player.GetBoundingBox().Center.Y;
             }

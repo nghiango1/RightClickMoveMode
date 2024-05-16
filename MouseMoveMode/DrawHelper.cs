@@ -21,7 +21,7 @@ namespace MouseMoveMode
         public static void drawBox(SpriteBatch b, Vector2 position)
         {
             var color = Color.White;
-            DrawHelper._drawBox(b, new Rectangle((int)position.X, (int)position.Y, 16, 16), color);
+            DrawHelper._drawBox(b, new Rectangle((int)position.X, (int)position.Y, 32, 32), color);
         }
 
         /**
@@ -33,7 +33,7 @@ namespace MouseMoveMode
         public static void drawBox(SpriteBatch b, Vector2 posistion, Color color)
         {
             var position = Game1.GlobalToLocal(Game1.viewport, posistion);
-            DrawHelper._drawBox(b, new Rectangle((int)position.X, (int)position.Y, 16, 16), color);
+            DrawHelper._drawBox(b, new Rectangle((int)position.X, (int)position.Y, 32, 32), color);
         }
 
 

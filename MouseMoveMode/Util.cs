@@ -13,15 +13,21 @@ namespace MouseMoveMode
 
         public static void flushCache()
         {
-            cacheCantPassable.Clear();
-            nonPassableNodes.Clear();
+            if (cacheCantPassable.Count != 0)
+            {
+                cacheCantPassable.Clear();
+            }
+            if (nonPassableNodes.Count != 0)
+            {
+                nonPassableNodes.Clear();
+            }
         }
 
         public static void drawPassable(SpriteBatch b)
         {
             foreach (var node in nonPassableNodes)
             {
-                node.draw(b, color: Color.Gray);
+                node.draw(b, color: Color.Red);
             }
         }
 
@@ -55,19 +61,31 @@ namespace MouseMoveMode
         private static bool _isTilePassable(Vector2 tile, bool useBetter)
         {
             if (useBetter)
-                return _isTilePassableBetter(tile);
-            else
                 return _isTilePassableOld(tile);
+            else
+                return _isTilePassableNew(tile);
         }
 
         /**
-         * @brief VonLoewe implementation for isTilePassable
+         * @brief VonLoewe implementation for isTilePassable, fixeds as some time building tiles is passable
+         * Now actually there is way more passable tile here tbh
          */
-        private static bool _isTilePassableBetter(Vector2 tile)
+        private static bool _isTilePassableNew(Vector2 tile)
         {
-            const CollisionMask collisionMask = CollisionMask.Buildings | CollisionMask.Furniture | CollisionMask.Objects |
-                                    CollisionMask.TerrainFeatures | CollisionMask.LocationSpecific;
             var l = Game1.player.currentLocation;
+            var building = l.getBuildingAt(tile);
+            if (building is not null)
+            {
+                if (!building.isTilePassable(tile))
+                {
+                    nonPassableNodes.Add(new DrawableNode(Util.toBoxPosition(tile)));
+                    //this.Monitor.Log("Found unpassable building " + item + " at tile " + tile, LogLevel.Info);
+                    return false;
+                }
+            }
+
+            const CollisionMask collisionMask = CollisionMask.Furniture | CollisionMask.Objects |
+                                    CollisionMask.TerrainFeatures | CollisionMask.LocationSpecific;
             if (l.isTilePassable(tile) && !l.IsTileOccupiedBy(tile, collisionMask))
                 return true;
             nonPassableNodes.Add(new DrawableNode(Util.toBoxPosition(tile)));
@@ -93,12 +111,10 @@ namespace MouseMoveMode
                 return false;
             }
 
-            foreach (var item in gl.buildings)
+            var building = gl.getBuildingAt(tile);
+            if (building is not null)
             {
-                Rectangle box = item.GetBoundingBox();
-                if (!box.Contains(toBoxPosition(tile)))
-                    continue;
-                if (!item.isTilePassable(tile))
+                if (!building.isTilePassable(tile))
                 {
                     cacheCantPassable.Add(tile);
                     nonPassableNodes.Add(new DrawableNode(Util.toBoxPosition(tile)));
@@ -117,27 +133,23 @@ namespace MouseMoveMode
                 {
                     continue;
                 }
-                //Tree can be cutdown, thus caching should not be consider
+                //Tree can be cutdown, thus caching should not be consider, unless we flush every path-find
                 //this.Monitor.Log("Found unpassable terrain feature " + items[tile], LogLevel.Info);
-                //cacheCantPassable.Add(tile) = false;
-                //nodes.Add(new DrawableNode(Util.toBoxPosition(tile)));
-                return false;
-            }
-
-            foreach (var item in gl.largeTerrainFeatures)
-            {
-                if (item.isPassable())
-                {
-                    continue;
-                }
-                if (item.getBoundingBox().Contains(toBoxPosition(tile)))
-                {
-                    continue;
-                }
-                //this.Monitor.Log("Found unpassable large terran feature " + item + " at " + tile, LogLevel.Info);
                 cacheCantPassable.Add(tile);
                 nonPassableNodes.Add(new DrawableNode(Util.toBoxPosition(tile)));
                 return false;
+            }
+
+            var largerTerrainFeature = gl.getLargeTerrainFeatureAt((int)tile.X, (int)tile.Y);
+            if (largerTerrainFeature is not null)
+            {
+                if (!largerTerrainFeature.isPassable())
+                {
+                    //this.Monitor.Log("Found unpassable large terran feature " + item + " at " + tile, LogLevel.Info);
+                    cacheCantPassable.Add(tile);
+                    nonPassableNodes.Add(new DrawableNode(Util.toBoxPosition(tile)));
+                    return false;
+                }
             }
 
             if (gl.Objects.ContainsKey(tile))
@@ -145,10 +157,23 @@ namespace MouseMoveMode
                 var item = gl.Objects[tile];
                 if (!item.isPassable())
                 {
-                    // Object like stone etc should also consider breakable
+                    // Object like stone etc should also consider breakable, thus should not be cache
                     //this.Monitor.Log("Found unpassable object" + item, LogLevel.Info);
-                    //cacheIsPassable[tile] = false;
-                    //nodes.Add(new DrawableNode(Util.toBoxPosition(tile)));
+                    cacheCantPassable.Add(tile);
+                    nonPassableNodes.Add(new DrawableNode(Util.toBoxPosition(tile)));
+                    return false;
+                }
+            }
+
+            var funiture = gl.GetFurnitureAt(tile);
+            if (funiture is not null)
+            {
+                if (!funiture.isPassable())
+                {
+                    // Object like stone etc should also consider breakable, thus should not be cache
+                    //this.Monitor.Log("Found unpassable furniture" + item, LogLevel.Info);
+                    cacheCantPassable.Add(tile);
+                    nonPassableNodes.Add(new DrawableNode(Util.toBoxPosition(tile)));
                     return false;
                 }
             }
@@ -164,9 +189,9 @@ namespace MouseMoveMode
          * @param paddingY (Optional) default to be the middle of the tile
          * @return true positional vector
          */
-        public static Vector2 toPosition(Vector2 tile, float paddingX = 31f, float paddingY = 31f)
+        public static Vector2 toPosition(Vector2 tile, float paddingX = 32f, float paddingY = 32f)
         {
-            return new Vector2((float)Math.Round(tile.X * 64f) + paddingX, (float)Math.Round(tile.Y * 64f) + paddingY);
+            return new Vector2(tile.X * 64 + paddingX, tile.Y * 64 + paddingY);
         }
 
         /**
