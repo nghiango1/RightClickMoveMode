@@ -14,7 +14,7 @@ namespace MouseMoveMode
 
         private IMonitor Monitor;
         private float microTileDelta = 0.0001f;
-        private float microPositionDelta = 60f;
+        private float microPositionDelta = 35f;
 
         private PriorityQueue<Vector2, float> pq = new PriorityQueue<Vector2, float>();
         private HashSet<Vector2> visited = new HashSet<Vector2>();
@@ -250,55 +250,82 @@ namespace MouseMoveMode
             var padY = 32;
 
             // blockage on left side by any mean
-            bool checkLeft = !Util.isTilePassable(positionTile - new Vector2(-1, 0));
-            checkLeft = checkLeft || !Util.isTilePassable(positionTile - new Vector2(-1, -1));
-            checkLeft = checkLeft || !Util.isTilePassable(positionTile - new Vector2(-1, 1));
+            bool checkLeft = !Util.isTilePassable(positionTile.X - 1, positionTile.Y);
+            checkLeft = checkLeft || !Util.isTilePassable(positionTile.X - 1, positionTile.Y - 1);
+            checkLeft = checkLeft || !Util.isTilePassable(positionTile.X - 1, positionTile.Y + 1);
 
             // blockage on right side by any mean
-            bool checkRight = !Util.isTilePassable(positionTile - new Vector2(1, 0));
-            checkRight = checkRight || !Util.isTilePassable(positionTile - new Vector2(1, -1));
-            checkRight = checkRight || !Util.isTilePassable(positionTile - new Vector2(1, 1));
+            bool checkRight = !Util.isTilePassable(positionTile.X + 1, positionTile.Y);
+            checkRight = checkRight || !Util.isTilePassable(positionTile.X + 1, positionTile.Y - 1);
+            checkRight = checkRight || !Util.isTilePassable(positionTile.X + 1, positionTile.Y + 1);
 
             if (checkLeft ^ checkRight)
             {
                 if (checkLeft)
-                    padX = box.Width / 2;
+                {
+                    //this.Monitor.Log("Left blockage", LogLevel.Info);
+                    padX = box.Width;
+                }
                 if (checkRight)
-                    padX = 64 - box.Width / 2;
+                {
+                    //this.Monitor.Log("Right blockage", LogLevel.Info);
+                    padX = 64 - box.Width;
+                }
             }
 
             // blockage on top side by any mean
-            bool checkTop = !Util.isTilePassable(positionTile - new Vector2(-1, 1));
-            checkTop = checkTop || !Util.isTilePassable(positionTile - new Vector2(0, 1));
-            checkTop = checkTop || !Util.isTilePassable(positionTile - new Vector2(1, 1));
+            bool checkTop = !Util.isTilePassable(positionTile.X - 1, positionTile.Y - 1);
+            checkTop = checkTop || !Util.isTilePassable(positionTile.X, positionTile.Y - 1);
+            checkTop = checkTop || !Util.isTilePassable(positionTile.X + 1, positionTile.Y - 1);
 
             // blockage on bottom side by any mean
-            bool checkBottom = !Util.isTilePassable(positionTile - new Vector2(-1, -1));
-            checkBottom = checkBottom || !Util.isTilePassable(positionTile - new Vector2(0, -1));
-            checkBottom = checkBottom || !Util.isTilePassable(positionTile - new Vector2(1, -1));
+            bool checkBottom = !Util.isTilePassable(positionTile.X - 1, positionTile.Y + 1);
+            checkBottom = checkBottom || !Util.isTilePassable(positionTile.X, positionTile.Y + 1);
+            checkBottom = checkBottom || !Util.isTilePassable(positionTile.X + 1, positionTile.Y + 1);
 
             if (checkTop ^ checkBottom)
             {
                 if (checkTop)
-                    padY = box.Height / 2;
+                {
+                    //this.Monitor.Log("Top blockage", LogLevel.Info);
+                    padY = box.Height;
+                }
                 if (checkBottom)
-                    padY = 64 - box.Height / 2;
+                {
+                    //this.Monitor.Log("Bottom blockage", LogLevel.Info);
+                    padY = 64 - box.Height;
+                }
             }
             var res = Util.toPosition(positionTile, padX, padY);
             return res;
         }
 
-        public Vector2 nextPath()
+        public Nullable<Vector2> nextPath()
         {
             if (this.path.Count == 0)
-                return this.destination;
+                return null;
 
+            Vector2 start = Game1.player.GetBoundingBox().Center.ToVector2();
             Vector2 next = this.path.Peek();
-            if (!Game1.player.GetBoundingBox().Contains(next))
+            if (Vector2.Distance(start, next) > this.microPositionDelta)
                 return this.path.Peek();
             this.path.Pop();
             this.pathNodes.Pop();
-            return nextPath();
+            return this.nextPath();
+        }
+
+        public Vector2 moveDirection()
+        {
+            var optionalNext = this.nextPath();
+            if (optionalNext is null)
+            {
+                return new Vector2(0, 0);
+            }
+            Vector2 next = optionalNext.Value;
+            Vector2 player = Game1.player.GetBoundingBox().Center.ToVector2();
+
+            Vector2 direction = Vector2.Subtract(next, player);
+            return direction;
         }
     }
 }
