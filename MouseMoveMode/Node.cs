@@ -16,7 +16,12 @@ namespace MouseMoveMode
             this.box = box;
         }
 
-        public DrawableNode(int x, int y, int width, int height)
+        public DrawableNode(Vector2 position, int width = 32, int height = 32)
+        {
+            this.box = new Rectangle((int)position.X, (int)position.Y, width, height);
+        }
+
+        public DrawableNode(int x, int y, int width = 32, int height = 32)
         {
             this.box = new Rectangle(x, y, width, height);
         }
