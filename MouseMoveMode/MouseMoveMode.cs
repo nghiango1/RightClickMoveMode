@@ -46,7 +46,6 @@ namespace MouseMoveMode
         private static Vector2 grabTile;
         public static NPC pointedNPC = null;
 
-        private static Vector2 vector_PlayerToDestination;
         private static Vector2 vector_PlayerToMouse;
         private static Vector2 vector_AutoMove;
 
@@ -163,8 +162,7 @@ namespace MouseMoveMode
                     pathFindingHelper.changeDes(position_Destination);
                 }
                 //this.Monitor.Log(String.Format("{0} to {1} with distance {2}", Game1.player.Position, pathFindingHelper.nextPath(), Vector2.Distance(Game1.player.Position, pathFindingHelper.nextPath())), LogLevel.Info);
-                vector_PlayerToDestination.X = pathFindingHelper.nextPath().X - Game1.player.GetBoundingBox().Center.X;
-                vector_PlayerToDestination.Y = pathFindingHelper.nextPath().Y - Game1.player.GetBoundingBox().Center.Y;
+                pathFindingHelper.nextPath();
             }
 
             if (Game1.player.ActiveObject != null)
@@ -312,9 +310,6 @@ namespace MouseMoveMode
                     position_Destination.X = position_MouseOnScreen.X + Game1.viewport.X;
                     position_Destination.Y = position_MouseOnScreen.Y + Game1.viewport.Y;
                     pathFindingHelper.changeDes(position_Destination);
-
-                    vector_PlayerToDestination.X = pathFindingHelper.nextPath().X - Game1.player.GetBoundingBox().Center.X;
-                    vector_PlayerToDestination.Y = pathFindingHelper.nextPath().Y - Game1.player.GetBoundingBox().Center.Y;
 
                     grabTile = new Vector2((float)(position_MouseOnScreen.X + Game1.viewport.X), (float)(position_MouseOnScreen.Y + Game1.viewport.Y)) / 64f;
 
@@ -547,47 +542,50 @@ namespace MouseMoveMode
         {
             bool flag = isMovingAutomaticaly;
 
-            if (flag)
+            if (!flag)
+                return;
+
+            if (isHoldingMove)
             {
-                if (isHoldingMove)
-                    vector_AutoMove = vector_PlayerToMouse;
-                else
-                    vector_AutoMove = vector_PlayerToDestination;
-
-                TryToCheckGrapTile();
-
-                bool flag2 = false;
-                bool flag3 = false;
+                vector_AutoMove = vector_PlayerToMouse;
 
                 Game1.player.movementDirections.Clear();
                 if (vector_AutoMove.X <= 5 && vector_AutoMove.X >= -5)
-                {
                     vector_AutoMove.X = 0;
-                    flag2 = true;
-                }
-                else if (vector_AutoMove.X >= 5)
-                    Game1.player.SetMovingRight(true);
-                else if (vector_AutoMove.X <= -5)
-                    Game1.player.SetMovingLeft(true);
-
                 if (vector_AutoMove.Y <= 5 && vector_AutoMove.Y >= -5)
-                {
                     vector_AutoMove.Y = 0;
-                    flag3 = true;
-                }
-                else if (vector_AutoMove.Y >= 5)
-                    Game1.player.SetMovingDown(true);
-                else if (vector_AutoMove.Y <= -5)
-                    Game1.player.SetMovingUp(true);
 
-                vector_AutoMove.Normalize();
-
-                if (flag2 && flag3)
+                if (vector_AutoMove == new Vector2(0, 0))
                 {
                     isMovingAutomaticaly = false;
-                    isTryToDoActionAtClickedTitle = 0;
+                    return;
                 }
             }
+            else
+                // If we following the path finding result
+                vector_AutoMove = pathFindingHelper.moveDirection();
+
+            if (vector_AutoMove == new Vector2(0, 0))
+            {
+                isMovingAutomaticaly = false;
+                return;
+            }
+            else
+            {
+                if (vector_AutoMove.Length() > 1f)
+                    vector_AutoMove.Normalize();
+                if (vector_AutoMove.X > 0)
+                    Game1.player.SetMovingRight(true);
+                else
+                    Game1.player.SetMovingLeft(true);
+
+                if (vector_AutoMove.Y > 0)
+                    Game1.player.SetMovingDown(true);
+                else
+                    Game1.player.SetMovingUp(true);
+
+            }
+
         }
 
         public static void StartPatching()
