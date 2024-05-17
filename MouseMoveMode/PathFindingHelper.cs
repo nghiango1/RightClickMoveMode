@@ -26,9 +26,9 @@ namespace MouseMoveMode
         private Vector2 destinationTile = new Vector2(0, 0);
         private Stack<Vector2> path = new Stack<Vector2>();
 
-        public bool useBetter = false;
         public bool debugVisitedTile = false;
         public bool debugPassable = false;
+        public bool debugVerbose = false;
 
         private int step;
 
@@ -45,12 +45,9 @@ namespace MouseMoveMode
             this.pathNodes.Clear();
         }
 
-        public PathFindingHelper(bool useBetter = false, bool debugVisitedTile = false, bool debugPassable = false)
+        public PathFindingHelper()
         {
             this.Monitor = ModEntry.getMonitor();
-            this.useBetter = useBetter;
-            this.debugVisitedTile = debugVisitedTile;
-            this.debugPassable = debugPassable;
         }
 
         public void drawVisitedNodes(SpriteBatch b)
@@ -84,9 +81,21 @@ namespace MouseMoveMode
 
         public void changeDes(Vector2 destination)
         {
+            if (this.debugVerbose)
+            {
+                this.Monitor.Log(String.Format("Change destination from {0} to {1}, tile value {2} to {3}", this.destination, destination, Util.toTile(this.destination), Util.toTile(destination)), LogLevel.Info);
+            }
             this.flushCache();
             Util.flushCache();
             aStarPathFinding(destination);
+        }
+
+        /**
+         * @brief Path-finding scaled down destination tile locatiton
+         */
+        public Vector2 getCurrentDestinationTile()
+        {
+            return Util.toTile(this.destination);
         }
 
         public void aStarPathFinding(Vector2 destination)
@@ -113,10 +122,13 @@ namespace MouseMoveMode
             {
                 limit -= 1;
                 var current = pq.Dequeue();
+
+                // Some tiles can be closer enough so we can stop it sooner
                 if (Vector2.Distance(this.destination, Util.toPosition(current)) < this.microPositionDelta)
                 {
                     this.destinationTile = current;
-                    //this.Monitor.Log("Found path!", LogLevel.Info);
+                    if (this.debugVerbose)
+                        this.Monitor.Log("Found path (skipped)!", LogLevel.Info);
                     updatePath();
                     return;
                 }
@@ -125,7 +137,8 @@ namespace MouseMoveMode
                 if (Vector2.Distance(current, this.destinationTile) < this.microTileDelta)
                 {
                     this.destinationTile = current;
-                    //this.Monitor.Log("Found path!", LogLevel.Info);
+                    if (this.debugVerbose)
+                        this.Monitor.Log("Found path!", LogLevel.Info);
                     updatePath();
                     return;
                 }
@@ -161,8 +174,11 @@ namespace MouseMoveMode
                             bool neighborIsGate = gl.getObjectAtTile((int)neighbor.X, (int)neighbor.Y) is Fence;
                             if (neighborIsGate)
                             {
-                                //this.Monitor.Log("Found gate", LogLevel.Info);
-                                //this.Monitor.Log(String.Format("From {0} to {1}", current, neighbor));
+                                if (this.debugVerbose)
+                                {
+                                    this.Monitor.Log("Found gate", LogLevel.Info);
+                                    this.Monitor.Log(String.Format("From {0} to {1}", current, neighbor));
+                                }
                             }
 
                             bool checkBlockage = false;
@@ -183,7 +199,8 @@ namespace MouseMoveMode
                             bool squezeToGate = (neighbor.X == current.X) && neighborIsGate;
                             if (squezeToGate)
                             {
-                                //this.Monitor.Log("Seem like we going through gate now");
+                                if (this.debugVerbose)
+                                    this.Monitor.Log("Seem like we going through gate now");
                             }
 
                             if (checkBlockage && !squezeToGate)
@@ -242,7 +259,8 @@ namespace MouseMoveMode
             while (Vector2.Distance(pointerTile, startTile) > this.microTileDelta)
             {
                 var traceBackPosition = this.addPadding(pointerTile);
-                //this.Monitor.Log("Path: " + traceBackPosition, LogLevel.Info);
+                if (this.debugVerbose)
+                    this.Monitor.Log("Path: " + traceBackPosition, LogLevel.Info);
                 this.path.Push(traceBackPosition);
 
                 this.pathNodes.Push(new DrawableNode(traceBackPosition));
@@ -258,7 +276,8 @@ namespace MouseMoveMode
         public Vector2 addPadding(Vector2 positionTile)
         {
             Rectangle box = Game1.player.GetBoundingBox();
-            //this.Monitor.Log(box.ToString(), LogLevel.Info);
+            if (this.debugVerbose)
+                this.Monitor.Log(box.ToString(), LogLevel.Info);
             var padX = 32;
             var padY = 32;
             var microRounding = 16;
@@ -277,12 +296,14 @@ namespace MouseMoveMode
             {
                 if (checkLeft)
                 {
-                    //this.Monitor.Log("Left blockage", LogLevel.Info);
+                    if (this.debugVerbose)
+                        this.Monitor.Log("Left blockage", LogLevel.Info);
                     padX = (box.Width / 2 + microRounding);
                 }
                 if (checkRight)
                 {
-                    //this.Monitor.Log("Right blockage", LogLevel.Info);
+                    if (this.debugVerbose)
+                        this.Monitor.Log("Right blockage", LogLevel.Info);
                     padX = 64 - (box.Width / 2 + microRounding);
                 }
             }
@@ -301,12 +322,14 @@ namespace MouseMoveMode
             {
                 if (checkTop)
                 {
-                    //this.Monitor.Log("Top blockage", LogLevel.Info);
+                    if (this.debugVerbose)
+                        this.Monitor.Log("Top blockage", LogLevel.Info);
                     padY = (box.Height / 2 + microRounding);
                 }
                 if (checkBottom)
                 {
-                    //this.Monitor.Log("Bottom blockage", LogLevel.Info);
+                    if (this.debugVerbose)
+                        this.Monitor.Log("Bottom blockage", LogLevel.Info);
                     padY = 64 - (box.Height / 2 + microRounding);
                 }
             }
