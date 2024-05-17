@@ -166,15 +166,19 @@ namespace MouseMoveMode
             {
                 if (isTryToDoActionAtClickedTitle == 2)
                 {
-                    position_Destination = pointedNPC.Position;
-                    pathFindingHelper.changeDes(position_Destination);
+                    position_Destination = pointedNPC.getStandingPosition();
+                    // This reducing the need to findPath on every tick, which could make player stuck in one place
+                    // because new path could overiding old one
+                    if (pathFindingHelper.getCurrentDestinationTile() != Util.toTile(position_Destination)) {
+                        pathFindingHelper.changeDes(position_Destination);
+                    }
                 }
                 pathFindingHelper.nextPath();
             }
 
             if (Game1.player.ActiveObject != null)
             {
-                if (isMovingAutomaticaly && (Game1.player.ActiveObject is StardewValley.Objects.Furniture))
+                if (isMovingAutomaticaly && (Game1.player.ActiveObject.isPlaceable()))
                 {
                     isMovingAutomaticaly = false;
                     Game1.player.Halt();
@@ -318,7 +322,7 @@ namespace MouseMoveMode
                     position_Destination.Y = position_MouseOnScreen.Y + Game1.viewport.Y;
                     pathFindingHelper.changeDes(position_Destination);
 
-                    grabTile = new Vector2((float)(position_MouseOnScreen.X + Game1.viewport.X), (float)(position_MouseOnScreen.Y + Game1.viewport.Y)) / 64f;
+                    grabTile = Util.toTile(position_Destination);
 
                     isMovingAutomaticaly = true;
                     isBeingControl = false;
@@ -332,7 +336,7 @@ namespace MouseMoveMode
                 {
                     Helper.Input.Suppress(e.Button);
 
-                    isTryToDoActionAtClickedTitle = GetActionType(ref grabTile);
+                    isTryToDoActionAtClickedTitle = GetActionType(grabTile);
                 }
                 else if (!isMouseOutsiteHitBox)
                 {
@@ -352,7 +356,17 @@ namespace MouseMoveMode
             }
         }
 
-        private int GetActionType(ref Vector2 grabTile)
+        private enum ActionType {
+            UNKNOW,
+            OBJECT,
+            NPC,
+            PLACEABLE_OBJECT,
+            TERRAIN_FEATURE,
+            LARGE_TERRAIN_FEATURE,
+            GAME_LOCATION,
+        }
+
+        private int GetActionType(Vector2 grabTile)
         {
             // There is 5 type:
             // 1 is for Object is 1x1 tile size but with 2x1 hit box (Chess, ...)
@@ -360,7 +374,8 @@ namespace MouseMoveMode
             // 3 to handle Fence, Seed, ... thaat placeable
             // 4 to handle terrainFeatures (some has hitbox that unreachable and have to change)
             // 5 is Unknown, try to grap at pointed place 
-            StardewValley.Object pointedObject = Game1.player.currentLocation.getObjectAtTile((int)grabTile.X, (int)grabTile.Y);
+            var gl = Game1.player.currentLocation;
+            StardewValley.Object pointedObject = gl.getObjectAtTile((int)grabTile.X, (int)grabTile.Y);
 
             if (pointedObject == null && Game1.player.currentLocation.getObjectAtTile((int)grabTile.X, (int)grabTile.Y + 1) != null)
             {
