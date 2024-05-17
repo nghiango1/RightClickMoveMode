@@ -9,12 +9,12 @@ namespace MouseMoveMode
 {
     class PathFindingHelper
     {
+        private IMonitor Monitor;
         private List<DrawableNode> visitedNodes = new List<DrawableNode>();
         private Stack<DrawableNode> pathNodes = new Stack<DrawableNode>();
 
-        private IMonitor Monitor;
         private float microTileDelta = 0.0001f;
-        private float microPositionDelta = 35f;
+        private float microPositionDelta = 25f;
 
         private PriorityQueue<Vector2, float> pq = new PriorityQueue<Vector2, float>();
         private HashSet<Vector2> visited = new HashSet<Vector2>();
@@ -27,7 +27,7 @@ namespace MouseMoveMode
         private Stack<Vector2> path = new Stack<Vector2>();
 
         public bool useBetter = false;
-        public bool debugCheckedTile = false;
+        public bool debugVisitedTile = false;
         public bool debugPassable = false;
 
         private int step;
@@ -45,11 +45,11 @@ namespace MouseMoveMode
             this.pathNodes.Clear();
         }
 
-        public PathFindingHelper(IMonitor im, bool useBetter = false, bool debugCheckedTile = false, bool debugPassable = false)
+        public PathFindingHelper(bool useBetter = false, bool debugVisitedTile = false, bool debugPassable = false)
         {
-            this.Monitor = im;
+            this.Monitor = ModEntry.getMonitor();
             this.useBetter = useBetter;
-            this.debugCheckedTile = debugCheckedTile;
+            this.debugVisitedTile = debugVisitedTile;
             this.debugPassable = debugPassable;
         }
 
@@ -67,7 +67,7 @@ namespace MouseMoveMode
 
         public void drawThing(SpriteBatch b)
         {
-            if (this.debugCheckedTile)
+            if (this.debugVisitedTile)
                 this.drawVisitedNodes(b);
 
             if (this.debugPassable)
@@ -136,7 +136,7 @@ namespace MouseMoveMode
                     {
                         if (i == 0 && j == 0)
                             continue;
-                        Vector2 neighbor = current + new Vector2(i, j);
+                        Vector2 neighbor = new Vector2(current.X + i, current.Y + j);
                         // tile isn't passable or already visited
                         if (!Util.isTilePassable(neighbor) || visited.Contains(neighbor))
                             continue;
@@ -150,32 +150,44 @@ namespace MouseMoveMode
                             }
                         }
 
-                        // horse riding will make player bigger, which can't go up and down into 1 tile gap. Skip anything like this
-                        // ?-any, O-passable, X-unpassable, P-current tile
-                        //
+                        // horse riding will make player bigger, which can't go up and down into 1 tile gap. Skip anything like this unless we goes through fence gate
+                        // ?-any, O-passable, X-unpassable, P-current tile (which isn't gate)
+                        // This isn't ok
                         // ?O?    OOX    OO?    XOO    ?OO
                         // XPX    XP?    XP?    ?PX    ?PX
                         // ?O?    OO?    OOX    ?OO    XOO
                         if (Game1.player.isRidingHorse())
                         {
+                            bool neighborIsGate = gl.getObjectAtTile((int)neighbor.X, (int)neighbor.Y) is Fence;
+                            if (neighborIsGate)
+                            {
+                                //this.Monitor.Log("Found gate", LogLevel.Info);
+                                //this.Monitor.Log(String.Format("From {0} to {1}", current, neighbor));
+                            }
+
+                            bool checkBlockage = false;
                             if (!Util.isTilePassable(neighbor.X - 1, neighbor.Y))
                             {
-                                bool check = false;
-                                check = check || !Util.isTilePassable(neighbor.X + 1, neighbor.Y - 1);
-                                check = check || !Util.isTilePassable(neighbor.X + 1, neighbor.Y);
-                                check = check || !Util.isTilePassable(neighbor.X + 1, neighbor.Y + 1);
-                                if (check)
-                                    continue;
+                                checkBlockage = checkBlockage || (!Util.isTilePassable(neighbor.X + 1, neighbor.Y - 1));
+                                checkBlockage = checkBlockage || (!Util.isTilePassable(neighbor.X + 1, neighbor.Y));
+                                checkBlockage = checkBlockage || (!Util.isTilePassable(neighbor.X + 1, neighbor.Y + 1));
                             }
 
                             if (!Util.isTilePassable(neighbor.X + 1, neighbor.Y))
                             {
-                                bool check = false;
-                                check = check || !Util.isTilePassable(neighbor.X - 1, neighbor.Y - 1);
-                                check = check || !Util.isTilePassable(neighbor.X - 1, neighbor.Y + 1);
-                                if (check)
-                                    continue;
+                                checkBlockage = checkBlockage || (!Util.isTilePassable(neighbor.X - 1, neighbor.Y - 1));
+                                checkBlockage = checkBlockage || (!Util.isTilePassable(neighbor.X - 1, neighbor.Y + 1));
                             }
+
+                            // We can squeze through gate when ringind horse ONLY WHEN MOVE UP AND DOWN
+                            bool squezeToGate = (neighbor.X == current.X) && neighborIsGate;
+                            if (squezeToGate)
+                            {
+                                //this.Monitor.Log("Seem like we going through gate now");
+                            }
+
+                            if (checkBlockage && !squezeToGate)
+                                continue;
                         }
 
                         // Pass all checked, this tile could be consider to be use
@@ -246,8 +258,10 @@ namespace MouseMoveMode
         public Vector2 addPadding(Vector2 positionTile)
         {
             Rectangle box = Game1.player.GetBoundingBox();
+            //this.Monitor.Log(box.ToString(), LogLevel.Info);
             var padX = 32;
             var padY = 32;
+            var microRounding = 16;
 
             // blockage on left side by any mean
             bool checkLeft = !Util.isTilePassable(positionTile.X - 1, positionTile.Y);
@@ -264,12 +278,12 @@ namespace MouseMoveMode
                 if (checkLeft)
                 {
                     //this.Monitor.Log("Left blockage", LogLevel.Info);
-                    padX = box.Width;
+                    padX = (box.Width / 2 + microRounding);
                 }
                 if (checkRight)
                 {
                     //this.Monitor.Log("Right blockage", LogLevel.Info);
-                    padX = 64 - box.Width;
+                    padX = 64 - (box.Width / 2 + microRounding);
                 }
             }
 
@@ -288,12 +302,12 @@ namespace MouseMoveMode
                 if (checkTop)
                 {
                     //this.Monitor.Log("Top blockage", LogLevel.Info);
-                    padY = box.Height;
+                    padY = (box.Height / 2 + microRounding);
                 }
                 if (checkBottom)
                 {
                     //this.Monitor.Log("Bottom blockage", LogLevel.Info);
-                    padY = 64 - box.Height;
+                    padY = 64 - (box.Height / 2 + microRounding);
                 }
             }
             var res = Util.toPosition(positionTile, padX, padY);

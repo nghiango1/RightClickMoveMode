@@ -30,6 +30,8 @@ namespace MouseMoveMode
     /// <summary>The mod entry point.</summary>
     internal sealed class ModEntry : Mod
     {
+        private static IMonitor monitor;
+
         public static ModConfig config;
         public static float hitboxRadius = 64f * 2;
         public static float baseHitboxRadius = 64f * 2;
@@ -78,9 +80,15 @@ namespace MouseMoveMode
             Helper.Events.Display.Rendered += this.RenderedEvents;
 
             StartPatching();
-            pathFindingHelper = new PathFindingHelper(this.Monitor);
+            ModEntry.monitor = this.Monitor;
+            pathFindingHelper = new PathFindingHelper();
 
             ModEntry.config = this.Helper.ReadConfig<ModConfig>();
+        }
+
+        public static IMonitor getMonitor()
+        {
+            return ModEntry.monitor;
         }
 
         private void RenderedEvents(object sender, RenderedEventArgs e)
@@ -161,7 +169,6 @@ namespace MouseMoveMode
                     position_Destination = pointedNPC.Position;
                     pathFindingHelper.changeDes(position_Destination);
                 }
-                //this.Monitor.Log(String.Format("{0} to {1} with distance {2}", Game1.player.Position, pathFindingHelper.nextPath(), Vector2.Distance(Game1.player.Position, pathFindingHelper.nextPath())), LogLevel.Info);
                 pathFindingHelper.nextPath();
             }
 
