@@ -255,4 +255,12 @@ namespace MouseMoveMode
             return res;
         }
     }
+
+    public enum FaceDirection
+    {
+        LEFT,
+        UP,
+        RIGHT,
+        DOWN,
+    }
 }
