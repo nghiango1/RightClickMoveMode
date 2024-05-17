@@ -160,7 +160,7 @@ namespace MouseMoveMode
             {
                 if (!largerTerrainFeature.isPassable())
                 {
-                    //this.Monitor.Log("Found unpassable large terran feature " + item + " at " + tile, LogLevel.Info);
+                    //this.Monitor.Log("Found unpassable large terrain feature " + item + " at " + tile, LogLevel.Info);
                     cacheCantPassable.Add(tile);
                     if (Util.debugPassable)
                         nonPassableNodes.Add(new DrawableNode(Util.toBoxPosition(tile)));
