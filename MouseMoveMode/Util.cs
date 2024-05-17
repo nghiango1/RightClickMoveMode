@@ -3,11 +3,14 @@ using System;
 using Microsoft.Xna.Framework;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework.Graphics;
+using StardewModdingAPI;
 
 namespace MouseMoveMode
 {
     class Util
     {
+        private static bool debugPassable = false;
+        private static bool debugPassableVebose = false;
         private static HashSet<Vector2> cacheCantPassable = new HashSet<Vector2>();
         private static List<DrawableNode> nonPassableNodes = new List<DrawableNode>();
 
@@ -17,14 +20,19 @@ namespace MouseMoveMode
             {
                 cacheCantPassable.Clear();
             }
-            if (nonPassableNodes.Count != 0)
+            if (Util.debugPassable)
             {
-                nonPassableNodes.Clear();
+                if (nonPassableNodes.Count != 0)
+                {
+                    nonPassableNodes.Clear();
+                }
             }
         }
 
         public static void drawPassable(SpriteBatch b)
         {
+            if (!Util.debugPassable)
+                return;
             foreach (var node in nonPassableNodes)
             {
                 node.draw(b, color: Color.Red);
@@ -78,8 +86,10 @@ namespace MouseMoveMode
             {
                 if (!building.isTilePassable(tile))
                 {
-                    nonPassableNodes.Add(new DrawableNode(Util.toBoxPosition(tile)));
-                    //this.Monitor.Log("Found unpassable building " + item + " at tile " + tile, LogLevel.Info);
+                    if (Util.debugPassable)
+                        nonPassableNodes.Add(new DrawableNode(Util.toBoxPosition(tile)));
+                    if (Util.debugPassableVebose)
+                        ModEntry.getMonitor().Log("Found unpassable building " + building + " at tile " + tile, LogLevel.Info);
                     return false;
                 }
             }
@@ -105,7 +115,8 @@ namespace MouseMoveMode
             GameLocation gl = Game1.player.currentLocation;
             if (!gl.isTilePassable(tile))
             {
-                //this.Monitor.Log("Found unpassable tile from current location at " + tile, LogLevel.Info);
+                if (Util.debugPassableVebose)
+                    ModEntry.getMonitor().Log("Found unpassable tile from current location at " + tile, LogLevel.Info);
                 cacheCantPassable.Add(tile);
                 nonPassableNodes.Add(new DrawableNode(Util.toBoxPosition(tile)));
                 return false;
@@ -117,8 +128,10 @@ namespace MouseMoveMode
                 if (!building.isTilePassable(tile))
                 {
                     cacheCantPassable.Add(tile);
-                    nonPassableNodes.Add(new DrawableNode(Util.toBoxPosition(tile)));
-                    //this.Monitor.Log("Found unpassable building " + item + " at tile " + tile, LogLevel.Info);
+                    if (Util.debugPassable)
+                        nonPassableNodes.Add(new DrawableNode(Util.toBoxPosition(tile)));
+                    if (Util.debugPassableVebose)
+                        ModEntry.getMonitor().Log("Found unpassable building " + building + " at tile " + tile, LogLevel.Info);
                     return false;
                 }
             }
@@ -134,9 +147,11 @@ namespace MouseMoveMode
                     continue;
                 }
                 //Tree can be cutdown, thus caching should not be consider, unless we flush every path-find
-                //this.Monitor.Log("Found unpassable terrain feature " + items[tile], LogLevel.Info);
+                if (Util.debugPassableVebose)
+                    ModEntry.getMonitor().Log("Found unpassable terrain feature " + items[tile], LogLevel.Info);
                 cacheCantPassable.Add(tile);
-                nonPassableNodes.Add(new DrawableNode(Util.toBoxPosition(tile)));
+                if (Util.debugPassable)
+                    nonPassableNodes.Add(new DrawableNode(Util.toBoxPosition(tile)));
                 return false;
             }
 
@@ -147,7 +162,8 @@ namespace MouseMoveMode
                 {
                     //this.Monitor.Log("Found unpassable large terran feature " + item + " at " + tile, LogLevel.Info);
                     cacheCantPassable.Add(tile);
-                    nonPassableNodes.Add(new DrawableNode(Util.toBoxPosition(tile)));
+                    if (Util.debugPassable)
+                        nonPassableNodes.Add(new DrawableNode(Util.toBoxPosition(tile)));
                     return false;
                 }
             }
@@ -160,7 +176,8 @@ namespace MouseMoveMode
                     // Object like stone etc should also consider breakable, thus should not be cache
                     //this.Monitor.Log("Found unpassable object" + item, LogLevel.Info);
                     cacheCantPassable.Add(tile);
-                    nonPassableNodes.Add(new DrawableNode(Util.toBoxPosition(tile)));
+                    if (Util.debugPassable)
+                        nonPassableNodes.Add(new DrawableNode(Util.toBoxPosition(tile)));
                     return false;
                 }
             }
@@ -173,7 +190,8 @@ namespace MouseMoveMode
                     // Object like stone etc should also consider breakable, thus should not be cache
                     //this.Monitor.Log("Found unpassable furniture" + item, LogLevel.Info);
                     cacheCantPassable.Add(tile);
-                    nonPassableNodes.Add(new DrawableNode(Util.toBoxPosition(tile)));
+                    if (Util.debugPassable)
+                        nonPassableNodes.Add(new DrawableNode(Util.toBoxPosition(tile)));
                     return false;
                 }
             }
@@ -236,6 +254,5 @@ namespace MouseMoveMode
                 }
             return res;
         }
-
     }
 }
