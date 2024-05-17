@@ -28,9 +28,11 @@ namespace MouseMoveMode
 
         public bool debugVisitedTile = false;
         public bool debugPassable = false;
-        public bool debugVerbose = false;
+        public bool debugVerbose = true;
 
         private int step;
+
+        public static bool isBestScoreFront { get; private set; }
 
         public void flushCache()
         {
@@ -62,7 +64,7 @@ namespace MouseMoveMode
                 node.draw(b);
         }
 
-        public void drawThing(SpriteBatch b)
+        public void drawIndicator(SpriteBatch b)
         {
             if (this.debugVisitedTile)
                 this.drawVisitedNodes(b);
@@ -103,11 +105,13 @@ namespace MouseMoveMode
             GameLocation gl = Game1.player.currentLocation;
             this.destination = destination;
 
-            // This preventing error when changing or rounding destinaltion multiple times
+            // This preventing error when changing or rounding destination multiple times
             this.destinationTile = Util.toTile(this.destination);
             this.pq.Enqueue(Game1.player.Tile, 0);
 
             Vector2 start = Game1.player.Tile;
+            // This also favor consider player in front of destination
+            isBestScoreFront = false;
             Vector2 bestScoreTile = start;
             float bestScore = Vector2.Distance(Game1.player.Position, this.destination);
 
@@ -122,16 +126,6 @@ namespace MouseMoveMode
             {
                 limit -= 1;
                 var current = pq.Dequeue();
-
-                // Some tiles can be closer enough so we can stop it sooner
-                if (Vector2.Distance(this.destination, Util.toPosition(current)) < this.microPositionDelta)
-                {
-                    this.destinationTile = current;
-                    if (this.debugVerbose)
-                        this.Monitor.Log("Found path (skipped)!", LogLevel.Info);
-                    updatePath();
-                    return;
-                }
 
                 // Being extra cautious here, as this is the true end for a_star
                 if (Vector2.Distance(current, this.destinationTile) < this.microTileDelta)
@@ -238,14 +232,36 @@ namespace MouseMoveMode
                     }
 
                     pq.Enqueue(neighbor, fScore[neighbor]);
-                    if (bestScore > Vector2.Distance(Util.toPosition(neighbor), this.destination))
+
+                    // We favor player to be infront of the destination, this make the path found more reliable-ish
+                    // Again, within-limit of the effective reach for the object. I just hard code 1 tiles here atm
+                    if (neighbor.X == this.destinationTile.X && (neighbor.Y - this.destinationTile.Y) < 1.1f)
                     {
-                        bestScore = Vector2.Distance(Util.toPosition(neighbor), this.destination);
-                        bestScoreTile = neighbor;
+                        if (!isBestScoreFront)
+                        {
+                            bestScore = Vector2.Distance(Util.toPosition(neighbor), this.destination);
+                            bestScoreTile = neighbor;
+                        }
+                        isBestScoreFront = true;
+                        if (isBestScoreFront && (bestScore > Vector2.Distance(Util.toPosition(neighbor), this.destination)))
+                        {
+                            bestScore = Vector2.Distance(Util.toPosition(neighbor), this.destination);
+                            bestScoreTile = neighbor;
+                        }
+                    }
+                    else
+                    {
+                        if (!isBestScoreFront && (bestScore > Vector2.Distance(Util.toPosition(neighbor), this.destination)))
+                        {
+                            bestScore = Vector2.Distance(Util.toPosition(neighbor), this.destination);
+                            bestScoreTile = neighbor;
+                        }
                     }
                 }
             }
 
+            // Destination tile is unreach-able (or no path found within limit),
+            // so we goes to the closest tile or the in-front tile
             this.destinationTile = bestScoreTile;
             updatePath();
         }
@@ -253,7 +269,10 @@ namespace MouseMoveMode
         public void updatePath()
         {
             this.path.Clear();
+            // We not add destination here, why?
+            //this.path.Push(this.destination);
             this.pathNodes.Push(new DrawableNode(this.destination));
+
             Vector2 startTile = Game1.player.Tile;
             Vector2 pointerTile = this.destinationTile;
             while (Vector2.Distance(pointerTile, startTile) > this.microTileDelta)
@@ -354,14 +373,21 @@ namespace MouseMoveMode
         public Vector2 moveDirection()
         {
             var optionalNext = this.nextPath();
-            if (optionalNext is null)
-            {
-                return new Vector2(0, 0);
-            }
-            Vector2 next = optionalNext.Value;
+            Vector2 next = this.destination;
+            if (optionalNext is not null)
+                next = optionalNext.Value;
             Vector2 player = Game1.player.GetBoundingBox().Center.ToVector2();
-
             Vector2 direction = Vector2.Subtract(next, player);
+
+            // This only in-diferent when destination is reach-able
+            if (Util.toTile(this.destination) == this.destinationTile)
+            {
+                // Which mean moving will end when we reach the destination tile
+                if (optionalNext is null)
+                    return new Vector2(0, 0);
+            }
+
+            // So if destination is unreachable, player will kept moving till we got there
             return direction;
         }
     }
