@@ -169,16 +169,16 @@ namespace MouseMoveMode
                     position_Destination = pointedNPC.getStandingPosition();
                     // This reducing the need to findPath on every tick, which could make player stuck in one place
                     // because new path could overiding old one
-                    if (pathFindingHelper.getCurrentDestinationTile() != Util.toTile(position_Destination)) {
+                    if (pathFindingHelper.getCurrentDestinationTile() != Util.toTile(position_Destination))
+                    {
                         pathFindingHelper.changeDes(position_Destination);
                     }
                 }
-                pathFindingHelper.nextPath();
             }
 
             if (Game1.player.ActiveObject != null)
             {
-                if (isMovingAutomaticaly && (Game1.player.ActiveObject.isPlaceable()))
+                if (isMovingAutomaticaly && Game1.player.ActiveObject is StardewValley.Objects.Furniture)
                 {
                     isMovingAutomaticaly = false;
                     Game1.player.Halt();
@@ -356,7 +356,8 @@ namespace MouseMoveMode
             }
         }
 
-        private enum ActionType {
+        private enum ActionType
+        {
             UNKNOW,
             OBJECT,
             NPC,
@@ -586,6 +587,8 @@ namespace MouseMoveMode
             else
                 // If we following the path finding result
                 vector_AutoMove = pathFindingHelper.moveDirection();
+
+            TryToCheckGrapTile();
 
             if (vector_AutoMove == new Vector2(0, 0))
             {
