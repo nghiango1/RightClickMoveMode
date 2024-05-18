@@ -116,21 +116,21 @@ namespace MouseMoveMode
                 List<Vector2> line = lineToTiles(Game1.player.Tile, this.destinationTile);
                 for (var i = 0; i < line.Count; i += 1)
                 {
-                    var tile = line[i];
-
-                    var node = new DrawableNode(this.addPadding(tile));
+                    var tile = Util.fixFragtionTile(line[i]);
+                    var node = new DrawableNode(Util.toBoxPosition(tile));
                     if (i >= 1)
                     {
-                        var prev = line[i - 1];
-                        if (isValidMovement(prev, tile))
+                        var prev = Util.fixFragtionTile(line[i - 1]);
+                        if (!isValidMovement(prev, tile))
                         {
                             node.color = Color.Red;
                         }
                     }
-                    var fixedTile = Util.fixFragtionTile(tile);
-                    this.Monitor.Log(String.Format("Line to tiles {0} (fixed: )or {1}", tile, fixedTile, this.addPadding(tile)), LogLevel.Info);
+                    if (this.debugVerbose)
+                    {
+                        this.Monitor.Log(String.Format("Line to tiles {0} (pre-fixed: {1}) or {2}", tile, line[i], this.addPadding(tile)), LogLevel.Info);
+                    }
                     this.lineToTileNodes.Add(node);
-                    this.lineToTileNodes.Add(new DrawableNode(Util.toBoxPosition(fixedTile), Color.Gold));
                 }
             }
         }
@@ -150,28 +150,18 @@ namespace MouseMoveMode
         }
 
         /**
-         * @brief the neighbor should not be a tile away from the current one
+         * @brief the neighbor should only be a tile away from the current one
          */
         private bool isValidMovement(Vector2 current, Vector2 neighbor)
         {
-            if (!Util.isTilePassable(neighbor))
-            {
-                return false;
-            }
-
             var gl = Game1.player.currentLocation;
             var i = neighbor.X - current.X;
-            if (i > 0) i = 1;
-            if (i < 0) i = -1;
-
             var j = neighbor.Y - current.X;
-            if (j > 0) j = 1;
-            if (j < 0) j = -1;
 
             if (i == 0 && j == 0)
                 return false;
-            // tile isn't passable or already visited
-            if (!Util.isTilePassable(neighbor) || visited.Contains(neighbor))
+            // tile isn't passable 
+            if (!Util.isTilePassable(neighbor))
                 return false;
 
             // diagonal special case handling, just don't do it if there is a blockage
@@ -272,6 +262,10 @@ namespace MouseMoveMode
                     for (int j = -1; j <= 1; j += 1)
                     {
                         Vector2 neighbor = new Vector2(current.X + i, current.Y + j);
+                        if (visited.Contains(neighbor))
+                        {
+                            continue;
+                        }
                         if (isValidMovement(current, neighbor))
                         {
                             // Pass all checked, this tile could be consider to be use
