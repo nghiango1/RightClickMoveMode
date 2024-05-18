@@ -91,6 +91,9 @@ namespace MouseMoveMode
 
         private void RenderedEvents(object sender, RenderedEventArgs e)
         {
+            if (!Context.IsWorldReady)
+                return;
+
             if (!config.RightClickMoveModeDefault)
                 return;
 
@@ -102,11 +105,10 @@ namespace MouseMoveMode
 
         private void UpdateTickMods(object sender, EventArgs e)
         {
-            bool flag = Context.IsWorldReady;
+            if (!Context.IsWorldReady)
+                return;
 
             if (!config.RightClickMoveModeDefault)
-                return;
-            if (!Context.IsWorldReady)
                 return;
 
             vector_PlayerToMouse = position_MouseOnScreen + new Vector2(Game1.viewport.X, Game1.viewport.Y) - Game1.player.GetBoundingBox().Center.ToVector2();
@@ -184,7 +186,8 @@ namespace MouseMoveMode
                 if (isActionableAtDesinationTile)
                 {
                     // Maybe we need dismount right
-                    if (Game1.player.isRidingHorse()) {
+                    if (Game1.player.isRidingHorse())
+                    {
                         if (Utility.withinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 2, Game1.player))
                         {
                             TryToCheckGrapTile();
@@ -258,8 +261,6 @@ namespace MouseMoveMode
 
         private void ButtonPressedMods(object sender, ButtonPressedEventArgs e)
         {
-            string button = e.Button.ToString();
-
             if (!Context.IsWorldReady)
                 return;
 
@@ -270,6 +271,8 @@ namespace MouseMoveMode
 
             if (!config.RightClickMoveModeDefault)
                 return;
+
+            string button = e.Button.ToString();
 
             if (e.Button == Game1.options.runButton[0].ToSButton())
             {
@@ -508,11 +511,9 @@ namespace MouseMoveMode
 
         private void MouseWheelScrolled(object sender, MouseWheelScrolledEventArgs e)
         {
-            bool flag = Context.IsWorldReady;
-
-            if (!config.ExtendedModeDefault)
-                return;
             if (!Context.IsWorldReady)
+                return;
+            if (!config.ExtendedModeDefault)
                 return;
 
             // MouseState mouseState = Mouse.GetState();
