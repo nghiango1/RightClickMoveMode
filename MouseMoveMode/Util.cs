@@ -9,7 +9,7 @@ namespace MouseMoveMode
 {
     class Util
     {
-        private static bool debugPassable = false;
+        public static bool debugPassable { get; private set; } = true;
         private static bool debugPassableVebose = false;
         private static HashSet<Vector2> cacheCantPassable = new HashSet<Vector2>();
         private static List<DrawableNode> nonPassableNodes = new List<DrawableNode>();

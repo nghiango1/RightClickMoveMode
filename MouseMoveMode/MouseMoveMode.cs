@@ -665,6 +665,20 @@ namespace MouseMoveMode
                     isMovingAutomaticaly = false;
                     return;
                 }
+
+                if (vector_AutoMove.Length() > 1f)
+                    vector_AutoMove.Normalize();
+                if (vector_AutoMove.X > 0)
+                    Game1.player.SetMovingRight(true);
+                else
+                    Game1.player.SetMovingLeft(true);
+
+                if (vector_AutoMove.Y > 0)
+                    Game1.player.SetMovingDown(true);
+                else
+                    Game1.player.SetMovingUp(true);
+
+                return;
             }
 
             // We following the path finding result
@@ -683,10 +697,11 @@ namespace MouseMoveMode
                     TryToCheckGrapTile();
                 return;
             }
+
             // Some time, the destination is unreachable, but we will goes until
             // colision with the grab tiles, then try to facing toward it
             // before stop and perform action if needed
-            else if (pathFindingHelper.nextPath() is null && Game1.player.isColliding(Game1.player.currentLocation, grabTile))
+            if (pathFindingHelper.nextPath() is null && Game1.player.isColliding(Game1.player.currentLocation, grabTile))
             {
                 isMovingAutomaticaly = false;
 
@@ -712,20 +727,18 @@ namespace MouseMoveMode
                 }
                 return;
             }
-            else
-            {
-                if (vector_AutoMove.Length() > 1f)
-                    vector_AutoMove.Normalize();
-                if (vector_AutoMove.X > 0)
-                    Game1.player.SetMovingRight(true);
-                else
-                    Game1.player.SetMovingLeft(true);
 
-                if (vector_AutoMove.Y > 0)
-                    Game1.player.SetMovingDown(true);
-                else
-                    Game1.player.SetMovingUp(true);
-            }
+            if (vector_AutoMove.Length() > 1f)
+                vector_AutoMove.Normalize();
+            if (vector_AutoMove.X > 0)
+                Game1.player.SetMovingRight(true);
+            else
+                Game1.player.SetMovingLeft(true);
+
+            if (vector_AutoMove.Y > 0)
+                Game1.player.SetMovingDown(true);
+            else
+                Game1.player.SetMovingUp(true);
 
         }
 
