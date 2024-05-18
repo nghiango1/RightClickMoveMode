@@ -12,6 +12,7 @@ namespace MouseMoveMode
         private IMonitor Monitor;
         private List<DrawableNode> visitedNodes = new List<DrawableNode>();
         private Stack<DrawableNode> pathNodes = new Stack<DrawableNode>();
+        private List<DrawableNode> lineToTileNodes = new List<DrawableNode>();
         private DrawableNode targetNode = null;
 
         private float microTileDelta = 0.0001f;
@@ -30,10 +31,12 @@ namespace MouseMoveMode
         public bool debugVisitedTile = false;
         public bool debugPassable = false;
         public bool debugVerbose = true;
+        public bool debugLineToTiles = true;
 
         public bool doPathSkipping = false;
 
         public static bool isBestScoreFront { get; private set; }
+        public Vector2 bestNext { get; private set; }
 
         public void flushCache()
         {
@@ -76,6 +79,12 @@ namespace MouseMoveMode
             if (this.debugPassable)
                 Util.drawPassable(b);
 
+            if (this.debugLineToTiles)
+            {
+                foreach (var node in this.lineToTileNodes)
+                    node.draw(b);
+            }
+
             this.drawPath(b);
         }
 
@@ -91,10 +100,26 @@ namespace MouseMoveMode
             {
                 this.Monitor.Log(String.Format("Change destination from {0} to {1}, tile value {2} to {3}", this.destination, destination, Util.toTile(this.destination), Util.toTile(destination)), LogLevel.Info);
             }
+
             this.flushCache();
             Util.flushCache();
             targetNode = new DrawableNode(destination);
             aStarPathFinding(destination);
+
+            if (this.debugLineToTiles)
+            {
+                if (this.debugVerbose)
+                {
+                    this.Monitor.Log(String.Format("Try draw line from tile {0} to {1}", Game1.player.Tile, this.destinationTile), LogLevel.Info);
+                }
+                this.lineToTileNodes.Clear();
+                foreach (var tile in lineToTiles(Game1.player.Tile, this.destinationTile))
+                {
+                    var node = new DrawableNode(this.addPadding(tile));
+                    this.Monitor.Log("Line to tiles: " + this.addPadding(tile), LogLevel.Info);
+                    this.lineToTileNodes.Add(node);
+                }
+            }
         }
 
         /**
@@ -258,7 +283,7 @@ namespace MouseMoveMode
 
                     // We favor player to be infront of the destination, this make the path found more reliable-ish
                     // Again, within-limit of the effective reach for the object. I just hard code 1 tiles here atm
-                    if (neighbor.X == this.destinationTile.X && (neighbor.Y - this.destinationTile.Y) < 1.1f)
+                    if (neighbor.X == this.destinationTile.X && (neighbor.Y - this.destinationTile.Y >= 0) && (neighbor.Y - this.destinationTile.Y) < 1.1f)
                     {
                         if (!isBestScoreFront)
                         {
@@ -316,13 +341,18 @@ namespace MouseMoveMode
             // it for extra protection that player can still stuck for any reason
             this.path.Push(Util.toPosition(startTile));
             this.pathNodes.Push(new DrawableNode(startTile));
+
+            if (doPathSkipping)
+            {
+                // This allowing us to be in unstuckable position when begin to
+                // move from the start tile
+                bestNext = this.path.Peek();
+            }
         }
 
         public Vector2 addPadding(Vector2 positionTile)
         {
             Rectangle box = Game1.player.GetBoundingBox();
-            if (this.debugVerbose)
-                this.Monitor.Log(box.ToString(), LogLevel.Info);
             var padX = 32;
             var padY = 32;
             var microRounding = 16;
@@ -383,6 +413,162 @@ namespace MouseMoveMode
         }
 
         /**
+         * @brief From A to B have some tile in between, it is as close to be
+         * a line as you wanted, it from A -> B for the tiles result. 
+         *
+         * @param A line from tileA
+         * @param B to tileB
+         */
+        public List<Vector2> lineToTiles(Vector2 A, Vector2 B)
+        {
+            var lineTiles = new List<Vector2>();
+            var stepY = B.Y - A.Y;
+            if (stepY > 0) stepY = 1;
+            if (stepY < 0) stepY = -1;
+
+            if (A.X == B.X)
+            {
+                if (A.Y == B.Y)
+                {
+                    // This is the same tile
+                    lineTiles.Add(A);
+                    return lineTiles;
+                }
+
+                // Or just a straght line on yAxis
+                var p = A.Y;
+                while (p != B.Y)
+                {
+                    var yAxis = p;
+                    var xAxis = A.X;
+                    lineTiles.Add(new Vector2(xAxis, yAxis));
+                    p += stepY;
+                }
+                return lineTiles;
+            }
+
+            // We are sure that it work on xAxis now
+            var line = (B.Y - A.Y) / (B.X - A.X);
+            var constant = A.Y - line * A.X;
+
+            var stepX = B.X - A.X;
+            if (stepX > 0) stepX = 1;
+            if (stepX < 0) stepX = -1;
+
+            var i = A.X;
+            while (i != B.X)
+            {
+                var xAxis = i;
+                var yAxis = line * i + constant;
+                lineTiles.Add(new Vector2(xAxis, yAxis));
+                i += stepX;
+            }
+
+            if (A.Y == B.Y)
+                return lineTiles;
+
+            line = (B.X - A.X) / (B.Y - A.Y);
+            constant = A.X - line * A.Y;
+
+            var j = A.Y;
+            while (j != B.Y)
+            {
+                var yAxis = j;
+                var xAxis = line * j + constant;
+                lineTiles.Add(new Vector2(xAxis, yAxis));
+                j += stepY;
+            }
+
+            return lineTiles;
+        }
+        /**
+         * @brief This scall thing back to tile base and check every movement
+         * is valid or not, skip path expect to be call in when calculating the
+         * next node in path to goes to
+         */
+        public void skipPath()
+        {
+            // So we can alway start at the player position (other wise we need
+            // to use a general start point)
+            // Normally we are expected to go to the next node in found path
+            // Which are both real position (not really ideal, so we scale them
+            // back down to tile position)
+            Vector2 start = Util.toTile(Game1.player.GetBoundingBox().Center.ToVector2());
+            Vector2 next = Util.toTile(this.path.Peek());
+
+            if (this.debugVerbose)
+            {
+                this.Monitor.Log("Try to do this skipping thing first", LogLevel.Info);
+            }
+
+            // We expect to find a best node that direct movement from the player
+            // location to that node (straight movement) is a valid movement
+            // Which mean every tile along the way in between need to be a valid
+            // movement
+            float bestLength = Vector2.Distance(start, next);
+            bestNext = this.path.Peek();
+
+            foreach (var skipping in this.path)
+            {
+                var skippingTile = Util.toTile(skipping);
+                // The line goes from skipping tile to start tile
+                var lineTiles = lineToTiles(skippingTile, start);
+                var prev = skippingTile;
+                var isBlocked = false;
+                foreach (var tile in lineTiles)
+                {
+                    // But we going from start, so this need to walk backward
+                    if (!isValidMovement(tile, prev))
+                    {
+                        isBlocked = true;
+                        break;
+                    }
+                }
+
+                if (isBlocked)
+                {
+                    continue;
+                }
+
+                if (bestLength < Vector2.Distance(start, skippingTile))
+                {
+                    bestLength = Vector2.Distance(start, skippingTile);
+                    bestNext = skipping;
+                }
+            }
+
+            // Extra here so we not goes to inf loop
+            var limit = 100;
+            while (next != bestNext)
+            {
+                if (this.debugVerbose)
+                    this.Monitor.Log(String.Format("Skip {0}, we go to {1} driectly", next, bestNext), LogLevel.Info);
+                next = this.path.Pop();
+                this.pathNodes.Pop();
+
+                // How can this happend, we can't skip everything
+                if (this.path is null)
+                    break;
+                // Limit should be enough
+                limit -= 1;
+                if (limit < 0)
+                {
+                    if (this.debugVerbose)
+                        this.Monitor.Log("This seem stuck, we breakout", LogLevel.Info);
+                    break;
+                }
+            }
+
+            // Re-add all imadiate point
+            var bestLine = lineToTiles(bestNext, start);
+            foreach (var tile in bestLine)
+            {
+                this.path.Push(this.addPadding(tile));
+                this.pathNodes.Push(new DrawableNode(this.addPadding(tile)));
+            }
+        }
+
+        /**
          * @brief This just give the next path if player has reach the current
          * path node
          */
@@ -393,44 +579,15 @@ namespace MouseMoveMode
 
             Vector2 start = Game1.player.GetBoundingBox().Center.ToVector2();
             Vector2 next = this.path.Peek();
-            float bestLength = Vector2.Distance(start, next);
-            Vector2 bestNext = next;
 
             // Seem suck flowing stupid path, we can use math and skip the most
             // of them
             if (doPathSkipping)
             {
-                foreach (var skipping in this.path)
-                {
-                    var line = Vector2.Subtract(skipping, start);
+                if (Vector2.Distance(start, bestNext) > this.microPositionDelta)
+                    return bestNext;
+                skipPath();
 
-                    var stepX = skipping.X - start.X;
-                    if (stepX > 0) stepX = 1;
-                    if (stepX < 0) stepX = -1;
-
-                    var stepY = skipping.Y - start.Y;
-                    if (stepY > 0) stepY = 1;
-                    if (stepY < 0) stepY = -1;
-
-                    bool isBlocked = false;
-                    for (var i = start.X; i <= skipping.X; i += stepX)
-                        for (var j = start.Y; j <= skipping.Y; j += stepY)
-                        {
-                            ;
-                        }
-
-                    if (isBlocked)
-                        continue;
-
-                    bestLength = Vector2.Distance(skipping, start);
-                    bestNext = skipping;
-                }
-
-                while (next != bestNext)
-                {
-                    this.path.Pop();
-                    this.pathNodes.Pop();
-                }
             }
 
             if (Vector2.Distance(start, next) > this.microPositionDelta)
