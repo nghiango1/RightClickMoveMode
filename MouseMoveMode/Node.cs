@@ -10,7 +10,7 @@ namespace MouseMoveMode
     class DrawableNode
     {
         private Rectangle box;
-        private Color color = Color.White;
+        public Color color { get; set; } = Color.White;
 
         public DrawableNode(Rectangle box)
         {

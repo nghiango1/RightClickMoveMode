@@ -113,11 +113,24 @@ namespace MouseMoveMode
                     this.Monitor.Log(String.Format("Try draw line from tile {0} to {1}", Game1.player.Tile, this.destinationTile), LogLevel.Info);
                 }
                 this.lineToTileNodes.Clear();
-                foreach (var tile in lineToTiles(Game1.player.Tile, this.destinationTile))
+                List<Vector2> line = lineToTiles(Game1.player.Tile, this.destinationTile);
+                for (var i = 0; i < line.Count; i += 1)
                 {
+                    var tile = line[i];
+
                     var node = new DrawableNode(this.addPadding(tile));
-                    this.Monitor.Log("Line to tiles: " + this.addPadding(tile), LogLevel.Info);
+                    if (i >= 1)
+                    {
+                        var prev = line[i - 1];
+                        if (isValidMovement(prev, tile))
+                        {
+                            node.color = Color.Red;
+                        }
+                    }
+                    var fixedTile = Util.fixFragtionTile(tile);
+                    this.Monitor.Log(String.Format("Line to tiles {0} (fixed: )or {1}", tile, fixedTile, this.addPadding(tile)), LogLevel.Info);
                     this.lineToTileNodes.Add(node);
+                    this.lineToTileNodes.Add(new DrawableNode(Util.toBoxPosition(fixedTile), Color.Gold));
                 }
             }
         }
@@ -136,11 +149,24 @@ namespace MouseMoveMode
             return isValidMovement(current, neighbor);
         }
 
+        /**
+         * @brief the neighbor should not be a tile away from the current one
+         */
         private bool isValidMovement(Vector2 current, Vector2 neighbor)
         {
+            if (!Util.isTilePassable(neighbor))
+            {
+                return false;
+            }
+
             var gl = Game1.player.currentLocation;
             var i = neighbor.X - current.X;
+            if (i > 0) i = 1;
+            if (i < 0) i = -1;
+
             var j = neighbor.Y - current.X;
+            if (j > 0) j = 1;
+            if (j < 0) j = -1;
 
             if (i == 0 && j == 0)
                 return false;
@@ -421,65 +447,53 @@ namespace MouseMoveMode
          */
         public List<Vector2> lineToTiles(Vector2 A, Vector2 B)
         {
-            var lineTiles = new List<Vector2>();
-            var stepY = B.Y - A.Y;
-            if (stepY > 0) stepY = 1;
-            if (stepY < 0) stepY = -1;
-
-            if (A.X == B.X)
-            {
-                if (A.Y == B.Y)
-                {
-                    // This is the same tile
-                    lineTiles.Add(A);
-                    return lineTiles;
-                }
-
-                // Or just a straght line on yAxis
-                var p = A.Y;
-                while (p != B.Y)
-                {
-                    var yAxis = p;
-                    var xAxis = A.X;
-                    lineTiles.Add(new Vector2(xAxis, yAxis));
-                    p += stepY;
-                }
-                return lineTiles;
-            }
-
-            // We are sure that it work on xAxis now
-            var line = (B.Y - A.Y) / (B.X - A.X);
-            var constant = A.Y - line * A.X;
+            var lineTilesX = new List<Vector2>();
 
             var stepX = B.X - A.X;
             if (stepX > 0) stepX = 1;
             if (stepX < 0) stepX = -1;
 
-            var i = A.X;
-            while (i != B.X)
+            var stepY = B.Y - A.Y;
+            if (stepY > 0) stepY = 1;
+            if (stepY < 0) stepY = -1;
+
+            if (A.X != B.X)
             {
-                var xAxis = i;
-                var yAxis = line * i + constant;
-                lineTiles.Add(new Vector2(xAxis, yAxis));
-                i += stepX;
+                // We are sure that it work on xAxis now
+                var line = (B.Y - A.Y) / (B.X - A.X);
+                var constant = A.Y - line * A.X;
+
+                var i = A.X;
+                while (i != B.X)
+                {
+                    var xAxis = i;
+                    var yAxis = line * i + constant;
+                    lineTilesX.Add(new Vector2(xAxis, yAxis));
+                    i += stepX;
+                }
             }
 
-            if (A.Y == B.Y)
-                return lineTiles;
-
-            line = (B.X - A.X) / (B.Y - A.Y);
-            constant = A.X - line * A.Y;
-
-            var j = A.Y;
-            while (j != B.Y)
+            var lineTilesY = new List<Vector2>();
+            if (A.Y != B.Y)
             {
-                var yAxis = j;
-                var xAxis = line * j + constant;
-                lineTiles.Add(new Vector2(xAxis, yAxis));
-                j += stepY;
+                var line = (B.X - A.X) / (B.Y - A.Y);
+                var constant = A.X - line * A.Y;
+
+                var j = A.Y;
+                while (j != B.Y)
+                {
+                    var yAxis = j;
+                    var xAxis = line * j + constant;
+                    lineTilesY.Add(new Vector2(xAxis, yAxis));
+                    j += stepY;
+                }
             }
 
-            return lineTiles;
+            // Seeing who do the job better, which just mean there is more node
+            if (lineTilesX.Count > lineTilesY.Count)
+                return lineTilesX;
+
+            return lineTilesY;
         }
         /**
          * @brief This scall thing back to tile base and check every movement
