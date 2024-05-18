@@ -545,6 +545,10 @@ namespace MouseMoveMode
                 if (isBlocked)
                     continue;
 
+                // It seem like this code is call too frequently, where the player
+                // right after run into a tile (not goes to the middle tile yet)
+                // then the skipping already being done. this make the movement
+                // bumping and get player stuck a lot
                 if (bestLength < Vector2.Distance(start, skipping))
                 {
                     bestLength = Vector2.Distance(start, skipping);
@@ -637,8 +641,6 @@ namespace MouseMoveMode
                 // When we reach the bestNext path
                 if ((Vector2.Distance(start, bestNext) < this.microPositionDelta))
                 {
-                    if (debugLineToTiles)
-                        this.lineToTileNodes.Clear();
                     // we start find the next one, or it might as well at the
                     // destination, we also haven't clear the current path yet
                     // so the top of stack should also be bestNext
@@ -736,7 +738,7 @@ namespace MouseMoveMode
 
         public static Vector2 getPlayerStandingTile()
         {
-            return Util.toTile(Game1.player.GetBoundingBox().Center.ToVector2());
+            return Game1.player.Tile;
         }
     }
 }
