@@ -9,11 +9,18 @@ namespace MouseMoveMode
      */
     class DrawableNode
     {
-        public Rectangle box;
+        private Rectangle box;
+        private Color color = Color.White;
 
         public DrawableNode(Rectangle box)
         {
             this.box = box;
+        }
+
+        public DrawableNode(Rectangle box, Color color)
+        {
+            this.box = box;
+            this.color = color;
         }
 
         public DrawableNode(Vector2 position, int width = 32, int height = 32)
@@ -26,9 +33,15 @@ namespace MouseMoveMode
             this.box = new Rectangle(x - width / 2, y - height / 2, width, height);
         }
 
+        public DrawableNode(int x, int y, Color color, int width = 32, int height = 32)
+        {
+            this.box = new Rectangle(x - width / 2, y - height / 2, width, height);
+            this.color = color;
+        }
+
         public void draw(SpriteBatch b)
         {
-            DrawHelper.drawBox(b, this.box, Color.White);
+            DrawHelper.drawBox(b, this.box, color);
         }
 
         public void draw(SpriteBatch b, Color color)

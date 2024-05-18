@@ -670,7 +670,7 @@ namespace MouseMoveMode
             // We following the path finding result
             if (isDebugVerbose)
             {
-                ModEntry.getMonitor().Log(String.Format("Follow path finding to {0} with direction {1}", pathFindingHelper.nextPath(), pathFindingHelper.moveDirection()), LogLevel.Info);
+                //ModEntry.getMonitor().Log(String.Format("Follow path finding to {0} with direction {1}", pathFindingHelper.nextPath(), pathFindingHelper.moveDirection()), LogLevel.Info);
             }
 
             vector_AutoMove = pathFindingHelper.moveDirection();
