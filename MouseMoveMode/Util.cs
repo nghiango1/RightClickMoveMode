@@ -235,6 +235,17 @@ namespace MouseMoveMode
         }
 
         /**
+         * @brief Convert a float fragtion tile to int
+         *
+         * @param position in true value
+         * @return down scale tile position
+         */
+        public static Vector2 fixFragtionTile(Vector2 tile)
+        {
+            return new Vector2((float)Math.Round(tile.X), (float)Math.Round(tile.Y));
+        }
+
+        /**
          * @brief Convert a in-game rectangle into a list of tile on 128x128 block map
          *
          * @param box usually a boundingBox or renderBox of in-game object
