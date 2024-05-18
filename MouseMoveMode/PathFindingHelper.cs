@@ -28,7 +28,7 @@ namespace MouseMoveMode
 
         public bool debugVisitedTile = false;
         public bool debugPassable = false;
-        public bool debugVerbose = true;
+        public bool debugVerbose = false;
 
         private int step;
 
