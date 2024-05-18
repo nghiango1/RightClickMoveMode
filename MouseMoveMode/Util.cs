@@ -256,11 +256,12 @@ namespace MouseMoveMode
         }
     }
 
+    // It's from the game source, don't change this enum
     public enum FaceDirection
     {
-        LEFT,
         UP,
         RIGHT,
         DOWN,
+        LEFT,
     }
 }

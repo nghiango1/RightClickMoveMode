@@ -93,6 +93,9 @@ namespace MouseMoveMode
 
         private void RenderedEvents(object sender, RenderedEventArgs e)
         {
+            if (config.RightClickMoveModeDefault)
+                return;
+
             if (isMovingAutomaticaly && !isHoldingMove)
             {
                 pathFindingHelper.drawIndicator(e.SpriteBatch);
@@ -178,6 +181,7 @@ namespace MouseMoveMode
 
             if (Game1.player.ActiveObject != null)
             {
+                // Player will stand still to place funiture item
                 if (isMovingAutomaticaly && Game1.player.ActiveObject is StardewValley.Objects.Furniture)
                 {
                     isMovingAutomaticaly = false;
@@ -320,11 +324,13 @@ namespace MouseMoveMode
                 if (!config.HoldingMoveOnly)
                 {
                     position_Destination = new Vector2(Game1.viewport.X, Game1.viewport.Y) + position_MouseOnScreen;
-                    grabTile = Util.toTile(position_Destination);
-                    pointedNPC = Game1.player.currentLocation.isCharacterAtTile(grabTile);
-
                     pathFindingHelper.changeDes(position_Destination);
 
+                    // This help where we decided where to perform action
+                    grabTile = Util.toTile(position_Destination);
+
+                    // This could null, so we know that we not chasing a NPC when this null
+                    pointedNPC = Game1.player.currentLocation.isCharacterAtTile(grabTile);
 
                     isMovingAutomaticaly = true;
                     isBeingControl = false;
@@ -332,6 +338,8 @@ namespace MouseMoveMode
 
                 if (config.ForceMoveButton.IsDown())
                 {
+                    if (isDebugVerbose)
+                        this.Monitor.Log("We only moving now, no more fancy interaction", LogLevel.Info);
                     Helper.Input.Suppress(e.Button);
                 }
                 else if (isMouseOutsiteHitBox)
@@ -351,6 +359,7 @@ namespace MouseMoveMode
             {
                 if (e.Button.IsUseToolButton())
                 {
+                    // Enough time for perform tool animation finish
                     tickCount = 15;
                 }
                 else
@@ -366,6 +375,8 @@ namespace MouseMoveMode
             // This is for NPC
             if (pointedNPC is not null)
             {
+                if (isDebugVerbose)
+                    this.Monitor.Log(String.Format("Found NPC {0} at {1}", pointedNPC, pointedNPC.Tile), LogLevel.Info);
                 return true;
             }
 
@@ -551,17 +562,19 @@ namespace MouseMoveMode
             // This overide all other action interaction
             if (pointedNPC is not null)
             {
+                if (isDebugVerbose)
+                    ModEntry.getMonitor().Log(String.Format("Try check NPC {0} at tile {1}", pointedNPC, grabTile), LogLevel.Info);
                 // This updating grabTile as NPC could already moved
-                grabTile = pathFindingHelper.getCurrentDestinationTile();
+                grabTile = pointedNPC.Tile;
                 bool isNPCChecked = Game1.tryToCheckAt(grabTile, Game1.player);
                 if (isNPCChecked)
                 {
                     if (isDebugVerbose)
-                        ModEntry.getMonitor().Log(String.Format("Try check NPC {0} at tile {1}", pointedNPC, grabTile), LogLevel.Info);
+                        ModEntry.getMonitor().Log(String.Format("Success check NPC {0} at tile {1}", pointedNPC, grabTile), LogLevel.Info);
                     isActionableAtDesinationTile = false;
                     isMovingAutomaticaly = false;
                 }
-                // This overide all other behavior
+                // This overide all other behavior, and it dangerous
                 return;
             }
 
@@ -574,6 +587,8 @@ namespace MouseMoveMode
                     var isPlaced = Utility.tryToPlaceItem(Game1.player.currentLocation, Game1.player.ActiveObject, (int)grabTile.X * 64 + 32, (int)grabTile.Y * 64 + 32);
                     if (isPlaced)
                     {
+                        if (isDebugVerbose)
+                            ModEntry.getMonitor().Log(String.Format("Success placing item at tile {0}", grabTile), LogLevel.Info);
                         isActionableAtDesinationTile = false;
                         isMovingAutomaticaly = false;
                         return;
@@ -586,6 +601,8 @@ namespace MouseMoveMode
             var isChecked = Game1.tryToCheckAt(pathFindingHelper.getCurrentDestinationTile(), Game1.player);
             if (isChecked)
             {
+                if (isDebugVerbose)
+                    ModEntry.getMonitor().Log(String.Format("Success checked item at tile {0}", grabTile), LogLevel.Info);
                 isActionableAtDesinationTile = false;
                 isMovingAutomaticaly = false;
             }
@@ -627,7 +644,7 @@ namespace MouseMoveMode
             }
 
             // Try to check grap tile when player is close enough
-            if (Utility.withinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 2, Game1.player))
+            if (Utility.withinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 2, Game1.player) && isActionableAtDesinationTile)
             {
                 TryToCheckGrapTile();
             }
@@ -863,16 +880,16 @@ namespace MouseMoveMode
                 Game1.player.temporarySpeedBuff = 0f;
 
                 if (Game1.player.movementDirections.Contains(0))
-                    TryMoveDrection(time, viewport, currentLocation, 0);
+                    TryMoveDrection(time, viewport, currentLocation, FaceDirection.UP);
 
                 if (Game1.player.movementDirections.Contains(2))
-                    TryMoveDrection(time, viewport, currentLocation, 2);
+                    TryMoveDrection(time, viewport, currentLocation, FaceDirection.DOWN);
 
                 if (Game1.player.movementDirections.Contains(1))
-                    TryMoveDrection(time, viewport, currentLocation, 1);
+                    TryMoveDrection(time, viewport, currentLocation, FaceDirection.RIGHT);
 
                 if (Game1.player.movementDirections.Contains(3))
-                    TryMoveDrection(time, viewport, currentLocation, 3);
+                    TryMoveDrection(time, viewport, currentLocation, FaceDirection.LEFT);
 
                 if (Game1.player.movementDirections.Count == 2)
                 {
@@ -905,93 +922,93 @@ namespace MouseMoveMode
             }
         }
 
-        public static int RightDirection(int faceDirection)
+        public static FaceDirection RightDirection(FaceDirection faceDirection)
         {
             switch (faceDirection)
             {
-                case 0:
-                    return 1;
-                case 1:
-                    return 2;
-                case 2:
-                    return 3;
-                case 3:
-                    return 0;
+                case FaceDirection.UP:
+                    return FaceDirection.RIGHT;
+                case FaceDirection.RIGHT:
+                    return FaceDirection.DOWN;
+                case FaceDirection.DOWN:
+                    return FaceDirection.LEFT;
+                case FaceDirection.LEFT:
+                    return FaceDirection.UP;
                 default:
-                    return -1;
+                    return FaceDirection.DOWN;
             }
         }
 
-        public static int LeftDirection(int faceDirection)
+        public static FaceDirection LeftDirection(FaceDirection faceDirection)
         {
             switch (faceDirection)
             {
-                case 0:
-                    return 3;
-                case 1:
-                    return 0;
-                case 2:
-                    return 1;
-                case 3:
-                    return 2;
+                case FaceDirection.UP:
+                    return FaceDirection.LEFT;
+                case FaceDirection.RIGHT:
+                    return FaceDirection.UP;
+                case FaceDirection.DOWN:
+                    return FaceDirection.RIGHT;
+                case FaceDirection.LEFT:
+                    return FaceDirection.DOWN;
                 default:
-                    return -1;
+                    return FaceDirection.DOWN;
             }
         }
 
-        public static void TryMoveDrection(GameTime time, xTile.Dimensions.Rectangle viewport, GameLocation currentLocation, int faceDirection)
+        public static void TryMoveDrection(GameTime time, xTile.Dimensions.Rectangle viewport, GameLocation currentLocation, FaceDirection faceDirection)
         {
-            Warp warp = Game1.currentLocation.isCollidingWithWarp(Game1.player.nextPosition(faceDirection), Game1.player);
+            Warp warp = Game1.currentLocation.isCollidingWithWarp(Game1.player.nextPosition(((int)faceDirection)), Game1.player);
             if (warp != null && Game1.player.IsLocalPlayer)
             {
                 Game1.player.warpFarmer(warp);
                 return;
             }
             float movementSpeed = Game1.player.getMovementSpeed();
-            if (Game1.player.movementDirections.Contains(faceDirection))
+            if (Game1.player.movementDirections.Contains((int)faceDirection))
             {
-                Rectangle nextPos = Game1.player.nextPosition(faceDirection);
+                Rectangle nextPos = Game1.player.nextPosition((int)faceDirection);
 
                 if (!currentLocation.isCollidingPosition(nextPos, viewport, true, 0, false, Game1.player))
                 {
-                    if (faceDirection == 0 || faceDirection == 2)
+                    if (faceDirection == FaceDirection.UP || faceDirection == FaceDirection.DOWN)
                         Game1.player.position.Y += movementSpeed * vector_AutoMove.Y;
                     else
                         Game1.player.position.X += movementSpeed * vector_AutoMove.X;
 
-                    Game1.player.behaviorOnMovement(faceDirection);
+                    Game1.player.behaviorOnMovement((int)faceDirection);
                 }
                 else
                 {
-                    nextPos = Game1.player.nextPositionHalf(faceDirection);
+                    nextPos = Game1.player.nextPositionHalf((int)faceDirection);
 
                     if (!currentLocation.isCollidingPosition(nextPos, viewport, true, 0, false, Game1.player))
                     {
 
-                        if (faceDirection == 0 || faceDirection == 2)
+                        if (faceDirection == FaceDirection.UP || faceDirection == FaceDirection.DOWN)
                             Game1.player.position.Y += movementSpeed * vector_AutoMove.Y / 2f;
                         else
                             Game1.player.position.X += movementSpeed * vector_AutoMove.X / 2f;
 
-                        Game1.player.behaviorOnMovement(faceDirection);
+                        Game1.player.behaviorOnMovement((int)faceDirection);
                     }
                     else if (Game1.player.movementDirections.Count == 1)
                     {
-                        Rectangle tmp = Game1.player.nextPosition(faceDirection);
+                        Rectangle tmp = Game1.player.nextPosition((int)faceDirection);
                         tmp.Width /= 4;
                         bool leftCorner = currentLocation.isCollidingPosition(tmp, viewport, true, 0, false, Game1.player);
                         tmp.X += tmp.Width * 3;
                         bool rightCorner = currentLocation.isCollidingPosition(tmp, viewport, true, 0, false, Game1.player);
-                        if (leftCorner && !rightCorner && !currentLocation.isCollidingPosition(Game1.player.nextPosition(LeftDirection(faceDirection)), viewport, true, 0, false, Game1.player))
+                        if (leftCorner && !rightCorner && !currentLocation.isCollidingPosition(Game1.player.nextPosition((int)LeftDirection(faceDirection)), viewport, true, 0, false, Game1.player))
                         {
-                            if (faceDirection == 0 || faceDirection == 2)
+                            if (faceDirection == FaceDirection.UP || faceDirection == FaceDirection.DOWN)
                                 Game1.player.position.X += (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
                             else
                                 Game1.player.position.Y += (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
                         }
-                        else if (rightCorner && !leftCorner && !currentLocation.isCollidingPosition(Game1.player.nextPosition(RightDirection(faceDirection)), viewport, true, 0, false, Game1.player))
+                        else if (rightCorner && !leftCorner && !currentLocation.isCollidingPosition(Game1.player.nextPosition((int)RightDirection(faceDirection)), viewport, true, 0, false, Game1.player))
                         {
-                            if (faceDirection == 0 || faceDirection == 2)
+                            if (faceDirection == FaceDirection.UP || faceDirection == FaceDirection.DOWN)
                                 Game1.player.position.X -= (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
                             else
                                 Game1.player.position.Y -= (float)Game1.player.speed * ((float)time.ElapsedGameTime.Milliseconds / 64f);
