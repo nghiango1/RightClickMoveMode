@@ -12,6 +12,7 @@ namespace MouseMoveMode
         private IMonitor Monitor;
         private List<DrawableNode> visitedNodes = new List<DrawableNode>();
         private Stack<DrawableNode> pathNodes = new Stack<DrawableNode>();
+        private DrawableNode targetNode = null;
 
         private float microTileDelta = 0.0001f;
         private float microPositionDelta = 25f;
@@ -28,9 +29,9 @@ namespace MouseMoveMode
 
         public bool debugVisitedTile = false;
         public bool debugPassable = false;
-        public bool debugVerbose = false;
+        public bool debugVerbose = true;
 
-        private int step;
+        public bool doPathSkipping = false;
 
         public static bool isBestScoreFront { get; private set; }
 
@@ -62,6 +63,9 @@ namespace MouseMoveMode
         {
             foreach (var node in this.pathNodes)
                 node.draw(b);
+            if (targetNode is not null)
+                targetNode.draw(b, Color.Red);
+
         }
 
         public void drawIndicator(SpriteBatch b)
@@ -89,6 +93,7 @@ namespace MouseMoveMode
             }
             this.flushCache();
             Util.flushCache();
+            targetNode = new DrawableNode(destination);
             aStarPathFinding(destination);
         }
 
@@ -98,6 +103,80 @@ namespace MouseMoveMode
         public Vector2 getCurrentDestinationTile()
         {
             return Util.toTile(this.destination);
+        }
+
+        private bool isValidMovement(Vector2 current, int i, int j)
+        {
+            Vector2 neighbor = new Vector2(current.X + i, current.Y + j);
+            return isValidMovement(current, neighbor);
+        }
+
+        private bool isValidMovement(Vector2 current, Vector2 neighbor)
+        {
+            var gl = Game1.player.currentLocation;
+            var i = neighbor.X - current.X;
+            var j = neighbor.Y - current.X;
+
+            if (i == 0 && j == 0)
+                return false;
+            // tile isn't passable or already visited
+            if (!Util.isTilePassable(neighbor) || visited.Contains(neighbor))
+                return false;
+
+            // diagonal special case handling, just don't do it if there is a blockage
+            if (Vector2.Distance(current, neighbor) > 1.2f)
+            {
+                if (!Util.isTilePassable(current.X, neighbor.Y) || !Util.isTilePassable(neighbor.X, current.Y))
+                {
+                    return false;
+                }
+            }
+
+            // horse riding will make player bigger, which can't go up and down into 1 tile gap. Skip anything like this unless we goes through fence gate
+            // ?-any, O-passable, X-unpassable, P-current tile (which isn't gate)
+            // This isn't ok
+            // ?O?    OOX    OO?    XOO    ?OO
+            // XPX    XP?    XP?    ?PX    ?PX
+            // ?O?    OO?    OOX    ?OO    XOO
+            if (Game1.player.isRidingHorse())
+            {
+                bool neighborIsGate = gl.getObjectAtTile((int)neighbor.X, (int)neighbor.Y) is Fence;
+                if (neighborIsGate)
+                {
+                    if (this.debugVerbose)
+                    {
+                        this.Monitor.Log("Found gate", LogLevel.Info);
+                        this.Monitor.Log(String.Format("From {0} to {1}", current, neighbor));
+                    }
+                }
+
+                bool checkBlockage = false;
+                if (!Util.isTilePassable(neighbor.X - 1, neighbor.Y))
+                {
+                    checkBlockage = checkBlockage || (!Util.isTilePassable(neighbor.X + 1, neighbor.Y - 1));
+                    checkBlockage = checkBlockage || (!Util.isTilePassable(neighbor.X + 1, neighbor.Y));
+                    checkBlockage = checkBlockage || (!Util.isTilePassable(neighbor.X + 1, neighbor.Y + 1));
+                }
+
+                if (!Util.isTilePassable(neighbor.X + 1, neighbor.Y))
+                {
+                    checkBlockage = checkBlockage || (!Util.isTilePassable(neighbor.X - 1, neighbor.Y - 1));
+                    checkBlockage = checkBlockage || (!Util.isTilePassable(neighbor.X - 1, neighbor.Y + 1));
+                }
+
+                // We can squeze through gate when ringind horse ONLY WHEN MOVE UP AND DOWN
+                bool squezeToGate = (neighbor.X == current.X) && neighborIsGate;
+                if (squezeToGate)
+                {
+                    if (this.debugVerbose)
+                        this.Monitor.Log("Seem like we going through gate now");
+                }
+
+                if (checkBlockage && !squezeToGate)
+                    return false;
+            }
+
+            return true;
         }
 
         public void aStarPathFinding(Vector2 destination)
@@ -141,68 +220,12 @@ namespace MouseMoveMode
                 for (int i = -1; i <= 1; i += 1)
                     for (int j = -1; j <= 1; j += 1)
                     {
-                        if (i == 0 && j == 0)
-                            continue;
                         Vector2 neighbor = new Vector2(current.X + i, current.Y + j);
-                        // tile isn't passable or already visited
-                        if (!Util.isTilePassable(neighbor) || visited.Contains(neighbor))
-                            continue;
-
-                        // diagonal special case handling, just don't do it if there is a blockage
-                        if (Vector2.Distance(current, neighbor) > 1.2f)
+                        if (isValidMovement(current, neighbor))
                         {
-                            if (!Util.isTilePassable(current.X, neighbor.Y) || !Util.isTilePassable(neighbor.X, current.Y))
-                            {
-                                continue;
-                            }
+                            // Pass all checked, this tile could be consider to be use
+                            neighborList.Add(neighbor);
                         }
-
-                        // horse riding will make player bigger, which can't go up and down into 1 tile gap. Skip anything like this unless we goes through fence gate
-                        // ?-any, O-passable, X-unpassable, P-current tile (which isn't gate)
-                        // This isn't ok
-                        // ?O?    OOX    OO?    XOO    ?OO
-                        // XPX    XP?    XP?    ?PX    ?PX
-                        // ?O?    OO?    OOX    ?OO    XOO
-                        if (Game1.player.isRidingHorse())
-                        {
-                            bool neighborIsGate = gl.getObjectAtTile((int)neighbor.X, (int)neighbor.Y) is Fence;
-                            if (neighborIsGate)
-                            {
-                                if (this.debugVerbose)
-                                {
-                                    this.Monitor.Log("Found gate", LogLevel.Info);
-                                    this.Monitor.Log(String.Format("From {0} to {1}", current, neighbor));
-                                }
-                            }
-
-                            bool checkBlockage = false;
-                            if (!Util.isTilePassable(neighbor.X - 1, neighbor.Y))
-                            {
-                                checkBlockage = checkBlockage || (!Util.isTilePassable(neighbor.X + 1, neighbor.Y - 1));
-                                checkBlockage = checkBlockage || (!Util.isTilePassable(neighbor.X + 1, neighbor.Y));
-                                checkBlockage = checkBlockage || (!Util.isTilePassable(neighbor.X + 1, neighbor.Y + 1));
-                            }
-
-                            if (!Util.isTilePassable(neighbor.X + 1, neighbor.Y))
-                            {
-                                checkBlockage = checkBlockage || (!Util.isTilePassable(neighbor.X - 1, neighbor.Y - 1));
-                                checkBlockage = checkBlockage || (!Util.isTilePassable(neighbor.X - 1, neighbor.Y + 1));
-                            }
-
-                            // We can squeze through gate when ringind horse ONLY WHEN MOVE UP AND DOWN
-                            bool squezeToGate = (neighbor.X == current.X) && neighborIsGate;
-                            if (squezeToGate)
-                            {
-                                if (this.debugVerbose)
-                                    this.Monitor.Log("Seem like we going through gate now");
-                            }
-
-                            if (checkBlockage && !squezeToGate)
-                                continue;
-                        }
-
-                        // Pass all checked, this tile could be consider to be use
-                        neighborList.Add(neighbor);
                     }
 
                 foreach (var neighbor in neighborList)
@@ -269,9 +292,12 @@ namespace MouseMoveMode
         public void updatePath()
         {
             this.path.Clear();
-            // We not add destination here, why?
-            //this.path.Push(this.destination);
-            this.pathNodes.Push(new DrawableNode(this.destination));
+            // We may not add destination here, as it could be un reachable
+            if (this.cameFrom.ContainsKey(Util.toTile(this.destination)))
+            {
+                this.path.Push(this.destination);
+                this.pathNodes.Push(new DrawableNode(this.destination));
+            }
 
             Vector2 startTile = Game1.player.Tile;
             Vector2 pointerTile = this.destinationTile;
@@ -356,6 +382,10 @@ namespace MouseMoveMode
             return res;
         }
 
+        /**
+         * @brief This just give the next path if player has reach the current
+         * path node
+         */
         public Nullable<Vector2> nextPath()
         {
             if (this.path.Count == 0)
@@ -363,6 +393,46 @@ namespace MouseMoveMode
 
             Vector2 start = Game1.player.GetBoundingBox().Center.ToVector2();
             Vector2 next = this.path.Peek();
+            float bestLength = Vector2.Distance(start, next);
+            Vector2 bestNext = next;
+
+            // Seem suck flowing stupid path, we can use math and skip the most
+            // of them
+            if (doPathSkipping)
+            {
+                foreach (var skipping in this.path)
+                {
+                    var line = Vector2.Subtract(skipping, start);
+
+                    var stepX = skipping.X - start.X;
+                    if (stepX > 0) stepX = 1;
+                    if (stepX < 0) stepX = -1;
+
+                    var stepY = skipping.Y - start.Y;
+                    if (stepY > 0) stepY = 1;
+                    if (stepY < 0) stepY = -1;
+
+                    bool isBlocked = false;
+                    for (var i = start.X; i <= skipping.X; i += stepX)
+                        for (var j = start.Y; j <= skipping.Y; j += stepY)
+                        {
+                            ;
+                        }
+
+                    if (isBlocked)
+                        continue;
+
+                    bestLength = Vector2.Distance(skipping, start);
+                    bestNext = skipping;
+                }
+
+                while (next != bestNext)
+                {
+                    this.path.Pop();
+                    this.pathNodes.Pop();
+                }
+            }
+
             if (Vector2.Distance(start, next) > this.microPositionDelta)
                 return this.path.Peek();
             this.path.Pop();
@@ -379,15 +449,54 @@ namespace MouseMoveMode
             Vector2 player = Game1.player.GetBoundingBox().Center.ToVector2();
             Vector2 direction = Vector2.Subtract(next, player);
 
-            // This only in-diferent when destination is reach-able
-            if (Util.toTile(this.destination) == this.destinationTile)
+            // When destination is reach-able, and we found the path lead to it
+            if (Util.isTilePassable(Util.toTile(this.destination)))
             {
-                // Which mean moving will end when we reach the destination tile
+                if (Util.toTile(this.destination) == this.destinationTile)
+                {
+                    // Which mean moving will end when we reach the destination tile
+                    // which also mean we finish all node inside path
+                    if (optionalNext is null)
+                    {
+                        if (this.debugVerbose)
+                        {
+                            this.Monitor.Log("Destination tile seem reachable, We found the right path too", LogLevel.Info);
+                        }
+                        return new Vector2(0, 0);
+                    }
+                }
+
+                // We can't found path to it, though it worth just try to reach
+                // destination after we finish all node inside path
                 if (optionalNext is null)
-                    return new Vector2(0, 0);
+                {
+                    if (this.debugVerbose)
+                    {
+                        this.Monitor.Log("Destination tile seem unreachable, as we haven't found the path to it yet", LogLevel.Info);
+                    }
+                    return direction;
+                }
             }
 
-            // So if destination is unreachable, player will kept moving till we got there
+            // So if destination is unreachable, player will kept moving till
+            // we got stuck colliding with the destination
+            if (optionalNext is null)
+            {
+                if (!Game1.player.isColliding(Game1.player.currentLocation, Util.toTile(this.destination)))
+                {
+                    return direction;
+                }
+                else
+                {
+                    if (this.debugVerbose)
+                    {
+                        this.Monitor.Log("Destination tile is unreachable, but we have collided to it!", LogLevel.Info);
+                    }
+                    return new Vector2(0, 0);
+                }
+            }
+
+            // We reach the end
             return direction;
         }
     }

@@ -33,7 +33,6 @@ namespace MouseMoveMode
         private static IMonitor monitor;
 
         public static ModConfig config;
-        public static float baseHitboxRadius = 64f * 2;
 
         public static bool isMovingAutomaticaly = false;
         public static bool isBeingAutoCommand = false;
@@ -92,7 +91,7 @@ namespace MouseMoveMode
 
         private void RenderedEvents(object sender, RenderedEventArgs e)
         {
-            if (config.RightClickMoveModeDefault)
+            if (!config.RightClickMoveModeDefault)
                 return;
 
             if (isMovingAutomaticaly && !isHoldingMove)
@@ -184,8 +183,16 @@ namespace MouseMoveMode
             {
                 if (isActionableAtDesinationTile)
                 {
+                    // Maybe we need dismount right
+                    if (Game1.player.isRidingHorse()) {
+                        if (Utility.withinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 2, Game1.player))
+                        {
+                            TryToCheckGrapTile();
+                        }
+                    }
+
                     // Try to check grap tile when player is close enough
-                    if (Utility.withinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 2, Game1.player))
+                    if (Utility.withinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 1, Game1.player))
                     {
                         TryToCheckGrapTile();
                     }
@@ -371,6 +378,12 @@ namespace MouseMoveMode
                             this.Monitor.Log(String.Format("Maybe it is the below one is actionable?", position_Destination, vector_PlayerToMouse.Length()), LogLevel.Info);
                         grabTile = grabTile + new Vector2(0, 1);
                         isActionableAtDesinationTile = checkActionableTile();
+                        if (isDebugVerbose)
+                        {
+                            // Well, it true no materwhat, it just logging at this point
+                            this.Monitor.Log("Can't found any thing really, but we try anyway", LogLevel.Info);
+                            isActionableAtDesinationTile = true;
+                        }
                     }
                 }
                 else if (!isMouseOutsiteHitBox)
@@ -536,20 +549,21 @@ namespace MouseMoveMode
             if (!Context.IsWorldReady)
                 return;
 
-            if (config.RightClickMoveModeDefault)
-                position_MouseOnScreen = Game1.getMousePosition(Game1.uiMode).ToVector2();
+            if (!config.RightClickMoveModeDefault)
+                return;
+
+            position_MouseOnScreen = Game1.getMousePosition(Game1.uiMode).ToVector2();
         }
 
         private void ButtonReleasedMods(object sender, ButtonReleasedEventArgs e)
         {
-            string button = e.Button.ToString();
+            if (!config.RightClickMoveModeDefault)
+                return;
 
-            if (config.RightClickMoveModeDefault)
+            string button = e.Button.ToString();
+            if (e.Button == Game1.options.runButton[0].ToSButton())
             {
-                if (e.Button == Game1.options.runButton[0].ToSButton())
-                {
-                    isHoldingRunButton = false;
-                }
+                isHoldingRunButton = false;
             }
         }
 
@@ -575,6 +589,9 @@ namespace MouseMoveMode
                     ModEntry.getMonitor().Log(String.Format("We dismount the horse"), LogLevel.Info);
                 return;
             }
+
+            // Recheck again, as we might change grabTile to bellow one under destination
+            pointedNPC = Game1.player.currentLocation.isCharacterAtTile(grabTile);
 
             // This overide all other action interaction
             if (pointedNPC is not null)
@@ -652,7 +669,7 @@ namespace MouseMoveMode
             // We following the path finding result
             if (isDebugVerbose)
             {
-                //ModEntry.getMonitor().Log(String.Format("Follow path finding to {0} with direction {1}", pathFindingHelper.nextPath(), pathFindingHelper.moveDirection()), LogLevel.Info);
+                ModEntry.getMonitor().Log(String.Format("Follow path finding to {0} with direction {1}", pathFindingHelper.nextPath(), pathFindingHelper.moveDirection()), LogLevel.Info);
             }
 
             vector_AutoMove = pathFindingHelper.moveDirection();
@@ -679,13 +696,15 @@ namespace MouseMoveMode
                         Game1.player.SetMovingLeft(true);
                     else
                         Game1.player.SetMovingRight(true);
-                } else {
+                }
+                else
+                {
                     if (facingVector.Y < 0)
                         Game1.player.SetMovingUp(true);
                     else
                         Game1.player.SetMovingDown(true);
                 }
-                
+
                 if (isActionableAtDesinationTile)
                 {
                     TryToCheckGrapTile();
@@ -730,15 +749,17 @@ namespace MouseMoveMode
             newHarmony.Patch(game1_UpdateControlInput_Info, null, new HarmonyMethod(game1_UpdateControlInput_PostfixPatch));
         }
 
+        // Prefix Method return will control the base method execution
+        // true mean base method will exec, false mean the opposite
         public static bool PrefixMethod_Farmer_HaltPatch()
         {
-            // Prefix Method return will control the base method execution
-            // true mean base method will exec, false mean the opposite
-            if (config.RightClickMoveModeDefault)
-            {
-                return !isMovingAutomaticaly || isBeingAutoCommand;
-            }
-            return true;
+            // This let Halt work normally
+            if (!config.RightClickMoveModeDefault)
+                return true;
+
+            // This will prevent any call to Halt which set the player stop
+            // movement durring the auto movement
+            return !isMovingAutomaticaly || isBeingAutoCommand;
         }
 
         public static bool PrefixMethod_Farmer_MovePositionPatch()
