@@ -33,7 +33,6 @@ namespace MouseMoveMode
         private static IMonitor monitor;
 
         public static ModConfig config;
-        public static float hitboxRadius = 64f * 2;
         public static float baseHitboxRadius = 64f * 2;
 
         public static bool isMovingAutomaticaly = false;
@@ -111,15 +110,6 @@ namespace MouseMoveMode
             if (!Context.IsWorldReady)
                 return;
 
-            hitboxRadius = baseHitboxRadius;
-
-            if (Game1.player.ActiveObject != null)
-            {
-                if (Game1.player.ActiveObject.isPlaceable())
-                {
-                    hitboxRadius = baseHitboxRadius * 1.5f;
-                }
-            }
             vector_PlayerToMouse = position_MouseOnScreen + new Vector2(Game1.viewport.X, Game1.viewport.Y) - Game1.player.GetBoundingBox().Center.ToVector2();
 
             if (!Context.IsPlayerFree)
@@ -186,6 +176,25 @@ namespace MouseMoveMode
                 {
                     isMovingAutomaticaly = false;
                     Game1.player.Halt();
+                }
+            }
+
+
+            if (isMovingAutomaticaly)
+            {
+                if (isActionableAtDesinationTile)
+                {
+                    // Try to check grap tile when player is close enough
+                    if (Utility.withinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 2, Game1.player))
+                    {
+                        TryToCheckGrapTile();
+                    }
+
+                    // Or if the player is facing into it
+                    if (Game1.player.isColliding(Game1.player.currentLocation, grabTile))
+                    {
+                        TryToCheckGrapTile();
+                    }
                 }
             }
         }
@@ -261,7 +270,8 @@ namespace MouseMoveMode
             }
 
             bool mouseRightIsDown = button == "MouseRight" && Context.IsPlayerFree;
-            bool isMouseOutsiteHitBox = vector_PlayerToMouse.Length().CompareTo(hitboxRadius) > 0;
+            var targetedTile = Util.toTile(position_MouseOnScreen);
+            bool isMouseOutsiteHitBox = Utility.withinRadiusOfPlayer((int)targetedTile.X, (int)targetedTile.Y, 1, Game1.player);
 
             if (Game1.player.ActiveObject != null)
             {
@@ -271,12 +281,12 @@ namespace MouseMoveMode
                 }
             }
 
-            if (Game1.player.CurrentTool != null && Game1.player.CurrentTool is MeleeWeapon weapon && !Game1.player.CurrentTool.Name.Contains("Scythe") && SpecialCooldown(weapon) <= 0 && Context.IsPlayerFree && Game1.player.CanMove)
+            if (Game1.player.CurrentTool != null && Game1.player.CurrentTool is MeleeWeapon weapon && !Game1.player.CurrentTool.Name.Contains("Scythe") && SpecialCooldown(weapon) <= 0 && Context.IsPlayerFree && Game1.player.CanMove && !Game1.player.isRidingHorse())
             {
                 if (config.WeaponsSpecticalInteractionType == 1)
                 {
                     mouseRightIsDown = false;
-                    if (isMouseOutsiteHitBox && button == "MouseRight" && !Game1.player.isRidingHorse())
+                    if (isMouseOutsiteHitBox && button == "MouseRight")
                     {
                         weapon.animateSpecialMove(Game1.player);
                         Helper.Input.Suppress(e.Button);
@@ -289,12 +299,13 @@ namespace MouseMoveMode
                         Helper.Input.Suppress(e.Button);
                         isMouseOutsiteHitBox = true;
                     }
-                    if ((button == "MouseMiddle" || button == "MouseX1") && !Game1.player.isRidingHorse())
+                    if ((button == "MouseMiddle" || button == "MouseX1"))
                     {
                         weapon.animateSpecialMove(Game1.player);
                         Helper.Input.Suppress(e.Button);
                     }
-                    if (button == "MouseLeft" && vector_PlayerToMouse.Length().CompareTo(hitboxRadius) < 0 && !Game1.player.isRidingHorse())
+                    // Left-click close to player performing the special attack
+                    if (button == "MouseLeft" && !isMouseOutsiteHitBox)
                     {
                         if (vector_PlayerToMouse.Y < 32f)
                         {
@@ -310,7 +321,7 @@ namespace MouseMoveMode
                         Helper.Input.Suppress(e.Button);
                         isMouseOutsiteHitBox = true;
                     }
-                    if ((button == "MouseMiddle" || button == "MouseX1") && !Game1.player.isRidingHorse())
+                    if ((button == "MouseMiddle" || button == "MouseX1"))
                     {
                         weapon.animateSpecialMove(Game1.player);
                         Helper.Input.Suppress(e.Button);
@@ -326,11 +337,14 @@ namespace MouseMoveMode
                     position_Destination = new Vector2(Game1.viewport.X, Game1.viewport.Y) + position_MouseOnScreen;
                     pathFindingHelper.changeDes(position_Destination);
 
-                    // This help where we decided where to perform action
+                    // This help where we decided where to perform action, usually it either the destination or the one bellow it
                     grabTile = Util.toTile(position_Destination);
 
                     // This could null, so we know that we not chasing a NPC when this null
                     pointedNPC = Game1.player.currentLocation.isCharacterAtTile(grabTile);
+                    if (isDebugVerbose)
+                        if (pointedNPC is not null)
+                            this.Monitor.Log(String.Format("Found NPC {0} at destination {1}", pointedNPC, position_Destination), LogLevel.Info);
 
                     isMovingAutomaticaly = true;
                     isBeingControl = false;
@@ -349,6 +363,15 @@ namespace MouseMoveMode
                     Helper.Input.Suppress(e.Button);
 
                     isActionableAtDesinationTile = checkActionableTile();
+
+                    // The mouse action indicator show the bellow tile too so this try the match with that
+                    if (isActionableAtDesinationTile == false)
+                    {
+                        if (isDebugVerbose)
+                            this.Monitor.Log(String.Format("Maybe it is the below one is actionable?", position_Destination, vector_PlayerToMouse.Length()), LogLevel.Info);
+                        grabTile = grabTile + new Vector2(0, 1);
+                        isActionableAtDesinationTile = checkActionableTile();
+                    }
                 }
                 else if (!isMouseOutsiteHitBox)
                 {
@@ -369,10 +392,15 @@ namespace MouseMoveMode
             }
         }
 
+        /**
+         * @brief This check if a tile is action able, it seem most item have 2 height hit-box when above tile isn't action able
+         */
         private bool checkActionableTile()
         {
             // There is 5 type:
             // This is for NPC
+            if (isDebugVerbose)
+                this.Monitor.Log(String.Format("Check if the tile at {0} is actionable", grabTile), LogLevel.Info);
             if (pointedNPC is not null)
             {
                 if (isDebugVerbose)
@@ -384,28 +412,13 @@ namespace MouseMoveMode
             if (gl.Objects.ContainsKey(grabTile))
             {
                 var pointedObject = gl.Objects[grabTile];
+                if (isDebugVerbose)
+                    this.Monitor.Log(String.Format("Check found tile at {0} is have {1}", grabTile, pointedObject), LogLevel.Info);
                 if (pointedObject.isActionable(Game1.player))
                 {
                     if (isDebugVerbose)
-                        this.Monitor.Log(String.Format("Found {0} at the pointed place", pointedObject), LogLevel.Info);
+                        this.Monitor.Log(String.Format("Found {0} at the pointed place is actionable", pointedObject), LogLevel.Info);
                     return true;
-                }
-            }
-
-            // This is for Object is 1x1 tile size but with 2x1 hit box (aka Chess, ...)
-            var bellowTile = new Vector2((int)grabTile.X, (int)grabTile.Y + 1);
-            if (gl.Objects.ContainsKey(bellowTile))
-            {
-                var bellowObject = gl.Objects[bellowTile];
-                if (bellowObject.IsSpawnedObject || (bellowObject.Type.Equals("Crafting") && bellowObject.Type.Equals("interactive")))
-                {
-                    if (bellowObject.isActionable(Game1.player))
-                    {
-                        grabTile = bellowTile;
-                        if (isDebugVerbose)
-                            this.Monitor.Log(String.Format("Found chest? {0} thing at the bellow of pointed place", bellowObject), LogLevel.Info);
-                        return true;
-                    }
                 }
             }
 
@@ -550,12 +563,16 @@ namespace MouseMoveMode
         {
             if (!isActionableAtDesinationTile)
                 return;
+            if (isDebugVerbose)
+                ModEntry.getMonitor().Log(String.Format("Trying to check grap tile {0}", grabTile), LogLevel.Info);
 
             // Auto dismount the player first if destination tile is actionable
             if (Game1.player.isRidingHorse())
             {
                 if (isActionableAtDesinationTile && Utility.tileWithinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 2, Game1.player))
                     Game1.player.mount.dismount();
+                if (isDebugVerbose)
+                    ModEntry.getMonitor().Log(String.Format("We dismount the horse"), LogLevel.Info);
                 return;
             }
 
@@ -580,11 +597,11 @@ namespace MouseMoveMode
 
             // Try to place the item next instead, I think it have higher piority
             if (Game1.player.ActiveObject is not null)
-                if (isActionableAtDesinationTile && Game1.player.ActiveObject.isPlaceable())
+                if (isActionableAtDesinationTile && Game1.player.ActiveObject.isPlaceable() && Game1.player.currentLocation.CanItemBePlacedHere(grabTile))
                 {
                     if (isDebugVerbose)
                         ModEntry.getMonitor().Log(String.Format("Try placing item at tile {0}", grabTile), LogLevel.Info);
-                    var isPlaced = Utility.tryToPlaceItem(Game1.player.currentLocation, Game1.player.ActiveObject, (int)grabTile.X * 64 + 32, (int)grabTile.Y * 64 + 32);
+                    var isPlaced = Utility.tryToPlaceItem(Game1.player.currentLocation, Game1.player.ActiveObject, (int)grabTile.X * 64, (int)grabTile.Y * 64);
                     if (isPlaced)
                     {
                         if (isDebugVerbose)
@@ -631,30 +648,48 @@ namespace MouseMoveMode
                     return;
                 }
             }
-            else
+
+            // We following the path finding result
+            if (isDebugVerbose)
             {
-                // we following the path finding result
-                if (isDebugVerbose)
-                {
-                    ModEntry.getMonitor().Log(String.Format("Follow path finding to {0} with direction {1}", pathFindingHelper.nextPath(), pathFindingHelper.moveDirection()), LogLevel.Info);
-                }
-
-                vector_AutoMove = pathFindingHelper.moveDirection();
-
+                //ModEntry.getMonitor().Log(String.Format("Follow path finding to {0} with direction {1}", pathFindingHelper.nextPath(), pathFindingHelper.moveDirection()), LogLevel.Info);
             }
 
-            // Try to check grap tile when player is close enough
-            if (Utility.withinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 2, Game1.player) && isActionableAtDesinationTile)
-            {
-                TryToCheckGrapTile();
-            }
-
-            // Or if the player is facing into it
-            // ????
+            vector_AutoMove = pathFindingHelper.moveDirection();
 
             if (vector_AutoMove == new Vector2(0, 0))
             {
                 isMovingAutomaticaly = false;
+                // We finish moving, might as well try to do action if needed
+                if (isActionableAtDesinationTile)
+                    TryToCheckGrapTile();
+                return;
+            }
+            // Some time, the destination is unreachable, but we will goes until
+            // colision with the grab tiles, then try to facing toward it
+            // before stop and perform action if needed
+            else if (pathFindingHelper.nextPath() is null && Game1.player.isColliding(Game1.player.currentLocation, grabTile))
+            {
+                isMovingAutomaticaly = false;
+
+                var facingVector = pathFindingHelper.moveDirection();
+                if (facingVector.X > facingVector.Y)
+                {
+                    if (facingVector.X < 0)
+                        Game1.player.SetMovingLeft(true);
+                    else
+                        Game1.player.SetMovingRight(true);
+                } else {
+                    if (facingVector.Y < 0)
+                        Game1.player.SetMovingUp(true);
+                    else
+                        Game1.player.SetMovingDown(true);
+                }
+                
+                if (isActionableAtDesinationTile)
+                {
+                    TryToCheckGrapTile();
+                }
                 return;
             }
             else
@@ -670,7 +705,6 @@ namespace MouseMoveMode
                     Game1.player.SetMovingDown(true);
                 else
                     Game1.player.SetMovingUp(true);
-
             }
 
         }
