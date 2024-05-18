@@ -9,6 +9,13 @@ namespace MouseMoveMode
 {
     class PathFindingHelper
     {
+        // Logic control
+        public bool debugVisitedTile = false;
+        public bool debugVerbose = true;
+        public bool debugLineToTiles = true;
+
+        public bool doPathSkipping = true;
+
         private IMonitor Monitor;
         private List<DrawableNode> visitedNodes = new List<DrawableNode>();
         private Stack<DrawableNode> pathNodes = new Stack<DrawableNode>();
@@ -27,13 +34,6 @@ namespace MouseMoveMode
         private Vector2 destination = new Vector2(0, 0);
         private Vector2 destinationTile = new Vector2(0, 0);
         private Stack<Vector2> path = new Stack<Vector2>();
-
-        public bool debugVisitedTile = false;
-        public bool debugPassable = false;
-        public bool debugVerbose = true;
-        public bool debugLineToTiles = true;
-
-        public bool doPathSkipping = true;
 
         public static bool isBestScoreFront { get; private set; }
         public Vector2 bestNext { get; private set; }
@@ -76,7 +76,7 @@ namespace MouseMoveMode
             if (this.debugVisitedTile)
                 this.drawVisitedNodes(b);
 
-            if (this.debugPassable)
+            if (Util.debugPassable)
                 Util.drawPassable(b);
 
             if (this.debugLineToTiles)
@@ -110,10 +110,10 @@ namespace MouseMoveMode
             {
                 if (this.debugVerbose)
                 {
-                    this.Monitor.Log(String.Format("Try draw line from tile {0} to {1}", Game1.player.Tile, Util.toTile(this.bestNext)), LogLevel.Info);
+                    this.Monitor.Log(String.Format("Try draw line from tile {0} to {1}", getPlayerStandingTile(), Util.toTile(this.destination)), LogLevel.Info);
                 }
                 this.lineToTileNodes.Clear();
-                List<Vector2> line = lineToTiles(Game1.player.Tile, Util.toTile(this.bestNext));
+                List<Vector2> line = lineToTiles(getPlayerStandingTile(), Util.toTile(this.destination));
                 for (var i = 0; i < line.Count; i += 1)
                 {
                     var tile = Util.fixFragtionTile(line[i]);
@@ -161,7 +161,7 @@ namespace MouseMoveMode
             if (i == 0 && j == 0)
                 return false;
             // tile isn't passable 
-            if (!Util.isTilePassable(neighbor))
+            if (!Util.isTilePassable(neighbor) || !Util.isTilePassable(current))
                 return false;
 
             // diagonal special case handling, just don't do it if there is a blockage
@@ -227,9 +227,9 @@ namespace MouseMoveMode
 
             // This preventing error when changing or rounding destination multiple times
             this.destinationTile = Util.toTile(this.destination);
-            this.pq.Enqueue(Game1.player.Tile, 0);
+            this.pq.Enqueue(getPlayerStandingTile(), 0);
 
-            Vector2 start = Game1.player.Tile;
+            Vector2 start = getPlayerStandingTile();
             // This also favor consider player in front of destination
             isBestScoreFront = false;
             Vector2 bestScoreTile = start;
@@ -344,7 +344,7 @@ namespace MouseMoveMode
                 this.pathNodes.Push(new DrawableNode(this.destination));
             }
 
-            Vector2 startTile = Game1.player.Tile;
+            Vector2 startTile = getPlayerStandingTile();
             Vector2 pointerTile = this.destinationTile;
             while (Vector2.Distance(pointerTile, startTile) > this.microTileDelta)
             {
@@ -499,14 +499,20 @@ namespace MouseMoveMode
         public void findBestNext()
         {
             // Only try to skip if we have some thing right
-            if (this.path.Count < 2) return;
+            if (this.path.Count == 1)
+            {
+                this.bestNext = this.path.Peek();
+                return;
+            }
+
             // So we can alway start at the player position (other wise we need
             // to use a general start point)
             // Normally we are expected to go to the next node in found path
             // Which are both real position (not really ideal, so we scale them
             // back down to tile position)
-            Vector2 start = Util.toTile(Game1.player.GetBoundingBox().Center.ToVector2());
-            Vector2 next = Util.toTile(this.path.Peek());
+            Vector2 start = Game1.player.GetBoundingBox().Center.ToVector2();
+            Vector2 startTile = getPlayerStandingTile();
+            Vector2 next = this.path.Peek();
 
 
             // We expect to find a best node that direct movement from the player
@@ -520,12 +526,14 @@ namespace MouseMoveMode
             {
                 var skippingTile = Util.toTile(skipping);
                 // The line goes from skipping tile to start tile
-                var lineTiles = lineToTiles(skippingTile, start);
+                var lineTiles = lineToTiles(skippingTile, startTile);
                 var isBlocked = false;
-                for (var i = 1; i < lineTiles.Count; i += 1)
+                for (var i = 0; i < lineTiles.Count; i += 1)
                 {
                     var tile = Util.fixFragtionTile(lineTiles[i]);
-                    var prev = Util.fixFragtionTile(lineTiles[i - 1]);
+                    var prev = startTile;
+                    if (i > 0)
+                        prev = Util.fixFragtionTile(lineTiles[i - 1]);
                     // But we going from start, so this need to walk backward
                     if (!isValidMovement(tile, prev))
                     {
@@ -537,9 +545,31 @@ namespace MouseMoveMode
                 if (isBlocked)
                     continue;
 
-                if (bestLength < Vector2.Distance(start, skippingTile))
+                if (bestLength < Vector2.Distance(start, skipping))
                 {
-                    bestLength = Vector2.Distance(start, skippingTile);
+                    bestLength = Vector2.Distance(start, skipping);
+                    for (var i = 0; i < lineTiles.Count; i += 1)
+                    {
+                        var tile = Util.fixFragtionTile(lineTiles[i]);
+                        // This show us back the short cut we found
+                        if (debugLineToTiles)
+                        {
+                            this.lineToTileNodes.Clear();
+                            var node = new DrawableNode(Util.toBoxPosition(tile));
+                            var prev = startTile;
+                            if (i > 0)
+                                prev = Util.fixFragtionTile(lineTiles[i - 1]);
+
+                            // But we going from start, so this need to walk backward
+                            if (!isValidMovement(tile, prev))
+                            {
+                                node.color = Color.Red;
+                            }
+
+                            this.lineToTileNodes.Add(node);
+                        }
+                    }
+
                     bestNext = skipping;
 
                     if (this.debugVerbose)
@@ -553,19 +583,13 @@ namespace MouseMoveMode
 
         public void skipingPath()
         {
-            if (this.debugVerbose)
-            {
-                this.Monitor.Log("Try to do this skipping thing first", LogLevel.Info);
-            }
-
-            var next = this.path.Peek();
             // Extra here so we not goes to inf loop
             var limit = 100;
-            while (next != bestNext)
+            while (this.path.Peek() != bestNext)
             {
                 if (this.debugVerbose)
-                    this.Monitor.Log(String.Format("Skip {0}, we go to {1} driectly", next, bestNext), LogLevel.Info);
-                next = this.path.Pop();
+                    this.Monitor.Log(String.Format("Skip {0}, we go to {1} driectly", this.path.Peek(), bestNext), LogLevel.Info);
+                this.path.Pop();
                 this.pathNodes.Pop();
 
                 // How can this happend, we can't skip everything
@@ -605,28 +629,49 @@ namespace MouseMoveMode
                 return null;
 
             Vector2 start = Game1.player.GetBoundingBox().Center.ToVector2();
-            Vector2 next = this.path.Peek();
 
             // Seem suck flowing stupid path, we can use math and skip the most
             // of them
             if (doPathSkipping)
             {
+                // When we reach the bestNext path
                 if ((Vector2.Distance(start, bestNext) < this.microPositionDelta))
                 {
-                    this.lineToTileNodes.Clear();
+                    if (debugLineToTiles)
+                        this.lineToTileNodes.Clear();
+                    // we start find the next one, or it might as well at the
+                    // destination, we also haven't clear the current path yet
+                    // so the top of stack should also be bestNext
                     findBestNext();
-                    foreach (var tile in lineToTiles(Util.toTile(start), Util.toTile(bestNext)))
-                    {
-                        this.lineToTileNodes.Add(new DrawableNode(Util.toBoxPosition(Util.fixFragtionTile(tile))));
-                    }
+                    // and update the path imediately
+                    skipingPath();
                 }
-            }
 
-            if (Vector2.Distance(start, next) > this.microPositionDelta)
+                // The update also consider if we reach the next best path also
+                // this will put the following path to the end
+                if ((Vector2.Distance(start, bestNext) < this.microPositionDelta))
+                {
+                    if (this.debugVerbose)
+                    {
+                        this.Monitor.Log("Finish to follow skipping path", LogLevel.Info);
+                    }
+                    this.path.Pop();
+                    this.pathNodes.Pop();
+                }
+                if (this.path.Count == 0)
+                    return null;
                 return this.path.Peek();
-            this.path.Pop();
-            this.pathNodes.Pop();
-            return this.nextPath();
+            }
+            else
+            {
+                Vector2 next = this.path.Peek();
+
+                if (Vector2.Distance(start, next) > this.microPositionDelta)
+                    return this.path.Peek();
+                this.path.Pop();
+                this.pathNodes.Pop();
+                return this.nextPath();
+            }
         }
 
         public Vector2 moveDirection()
@@ -687,6 +732,11 @@ namespace MouseMoveMode
 
             // We reach the end
             return direction;
+        }
+
+        public static Vector2 getPlayerStandingTile()
+        {
+            return Util.toTile(Game1.player.GetBoundingBox().Center.ToVector2());
         }
     }
 }
