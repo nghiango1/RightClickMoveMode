@@ -11,11 +11,11 @@ namespace MouseMoveMode
     {
         // Logic control
         public bool debugVisitedTile = false;
-        public bool debugVerbose = true;
+        public bool debugVerbose = false;
         public bool debugLineToTiles = false;
-        public bool debugPathSmothing = true;
+        public bool debugPathSmothing = false;
 
-        public bool usePathSmothing = true;
+        public bool usePathSmothing = false;
 
         private IMonitor Monitor;
         private List<DrawableNode> visitedNodes = new List<DrawableNode>();
@@ -25,7 +25,7 @@ namespace MouseMoveMode
         private List<DrawableNode> lineToTileNodes;
 
         // only being initilized when enable debug logic control flag
-        private List<DrawableNode> pathSmothNodes;
+        private List<DrawableNode> smothPathNodes;
 
         private DrawableNode targetNode = null;
 
@@ -61,7 +61,7 @@ namespace MouseMoveMode
                 if (this.debugPathSmothing)
                 {
                     this.pathPreSmoth.Clear();
-                    this.pathSmothNodes.Clear();
+                    this.smothPathNodes.Clear();
                 }
             }
 
@@ -77,7 +77,7 @@ namespace MouseMoveMode
             if (this.usePathSmothing)
             {
                 if (this.debugPathSmothing)
-                    this.pathSmothNodes = new List<DrawableNode>();
+                    this.smothPathNodes = new List<DrawableNode>();
             }
 
             if (this.debugLineToTiles)
@@ -136,9 +136,24 @@ namespace MouseMoveMode
                 targetNode.draw(b, Color.Red);
         }
 
-        public void drawPreSmothPath(SpriteBatch b)
+        public void updateSmothNodes(List<Vector2> preSmothPath, bool flushNodes = true)
         {
-            foreach (var node in this.pathSmothNodes)
+            if (flushNodes)
+            {
+                this.smothPathNodes.Clear();
+            }
+
+            foreach (var pos in preSmothPath)
+            {
+                var node = new DrawableNode(pos);
+                node.color = Color.Red;
+                this.smothPathNodes.Add(node);
+            }
+        }
+
+        public void drawSmothNodes(SpriteBatch b)
+        {
+            foreach (var node in this.smothPathNodes)
                 node.draw(b);
             if (targetNode is not null)
                 targetNode.draw(b, Color.Red);
@@ -157,7 +172,7 @@ namespace MouseMoveMode
 
             if (this.usePathSmothing)
                 if (this.debugPathSmothing)
-                    this.drawPreSmothPath(b);
+                    this.drawSmothNodes(b);
 
             this.drawPath(b);
 
@@ -340,14 +355,14 @@ namespace MouseMoveMode
                         {
                             this.cameFrom[neighbor] = current;
                             gScore[neighbor] = temp;
-                            fScore[neighbor] = temp + (float)Math.Pow(Vector2.Distance(Util.toPosition(neighbor), this.destination), 2);
+                            fScore[neighbor] = temp + Vector2.Distance(Util.toPosition(neighbor), this.destination);
                         }
                     }
                     else
                     {
                         this.cameFrom.Add(neighbor, current);
                         gScore.Add(neighbor, temp);
-                        fScore.Add(neighbor, temp + (float)Math.Pow(Vector2.Distance(Util.toPosition(neighbor), this.destination), 2));
+                        fScore.Add(neighbor, temp + Vector2.Distance(Util.toPosition(neighbor), this.destination));
                     }
 
                     pq.Enqueue(neighbor, fScore[neighbor]);
@@ -385,6 +400,9 @@ namespace MouseMoveMode
             updatePath();
         }
 
+        /**
+         * @brief Trace back and getting shortest path from a_star camefrom map
+         */
         public List<Vector2> tracebackAndUpscalePath()
         {
             var temp = new Stack<Vector2>();
@@ -418,25 +436,55 @@ namespace MouseMoveMode
             return result;
         }
 
+        /**
+         * @brief A tiles path can be upscale back to position path
+         */
+        public List<Vector2> upscalePath(List<Vector2> tilePath)
+        {
+            List<Vector2> result = new List<Vector2>();
+            foreach (var tile in tilePath)
+            {
+                result.Add(this.addPadding(tile));
+            }
+            return result;
+        }
+
+        public List<Vector2> populateSmothPath(List<Vector2> smothPath)
+        {
+            var temp = new List<Vector2>();
+            if (smothPath.Count > 1)
+                for (var i = 1; i < smothPath.Count; i++)
+                {
+                    var start = Util.toTile(smothPath[i - 1]);
+                    var end = Util.toTile(smothPath[i]);
+                    foreach (var tile in lineToTiles(start, end, skipStartTile: i == 0))
+                    {
+                        var fixTile = Util.fixFragtionTile(tile);
+
+                        if (Util.isTilePassable(fixTile))
+                            temp.Add(this.addPadding(fixTile));
+                    }
+                }
+
+            return temp;
+        }
+
         public void updatePath()
         {
             var path = tracebackAndUpscalePath();
 
             if (usePathSmothing)
             {
+                // Add back the missing node
+                var smoth = this.findSmothPath(path);
+
                 if (debugPathSmothing)
                 {
-                    this.pathSmothNodes.Clear();
-                    this.pathPreSmoth = path;
-                    foreach (var step in path)
-                    {
-                        var node = new DrawableNode(step);
-                        node.color = Color.Red;
-                        this.pathSmothNodes.Add(node);
-                    }
+                    updateSmothNodes(smoth);
+                    updateSmothNodes(populateSmothPath(smoth), flushNodes: false);
                 }
 
-                path = findSmothPath(path);
+                //path = smoth;
             }
 
             // Update path to use the smoothen path
@@ -531,7 +579,7 @@ namespace MouseMoveMode
          * @param A line from tileA
          * @param B to tileB
          */
-        public List<Vector2> lineToTiles(Vector2 A, Vector2 B)
+        public List<Vector2> lineToTiles(Vector2 A, Vector2 B, bool skipStartTile = false)
         {
             var lineTilesX = new List<Vector2>();
 
@@ -554,7 +602,8 @@ namespace MouseMoveMode
                 {
                     var xAxis = i;
                     var yAxis = line * i + constant;
-                    lineTilesX.Add(new Vector2(xAxis, yAxis));
+                    if (!(i == A.X && skipStartTile))
+                        lineTilesX.Add(new Vector2(xAxis, yAxis));
                     i += stepX;
                 }
             }
@@ -570,7 +619,8 @@ namespace MouseMoveMode
                 {
                     var yAxis = j;
                     var xAxis = line * j + constant;
-                    lineTilesY.Add(new Vector2(xAxis, yAxis));
+                    if (!(j == A.Y && skipStartTile))
+                        lineTilesY.Add(new Vector2(xAxis, yAxis));
                     j += stepY;
                 }
             }

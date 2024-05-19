@@ -59,7 +59,7 @@ namespace MouseMoveMode
 
         private static PathFindingHelper pathFindingHelper;
 
-        public static bool isDebugVerbose = true;
+        public static bool isDebugVerbose = false;
 
         /*********
         ** Public methods
@@ -97,7 +97,7 @@ namespace MouseMoveMode
             if (!config.RightClickMoveModeDefault)
                 return;
 
-            if (isMovingAutomaticaly && !isHoldingMove)
+            if (isMovingAutomaticaly && !isHoldingMove && !isBeingControl)
             {
                 pathFindingHelper.drawIndicator(e.SpriteBatch);
             }
