@@ -166,7 +166,7 @@ namespace MouseMoveMode
         {
             var gl = Game1.player.currentLocation;
             var i = neighbor.X - current.X;
-            var j = neighbor.Y - current.X;
+            var j = neighbor.Y - current.Y;
 
             if (i == 0 && j == 0)
                 return false;
