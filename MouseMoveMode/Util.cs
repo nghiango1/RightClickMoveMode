@@ -174,7 +174,8 @@ namespace MouseMoveMode
                 if (!item.isPassable())
                 {
                     // Object like stone etc should also consider breakable, thus should not be cache
-                    //this.Monitor.Log("Found unpassable object" + item, LogLevel.Info);
+                    if (Util.debugPassableVebose)
+                        ModEntry.getMonitor().Log("Found unpassable object" + item, LogLevel.Info);
                     cacheCantPassable.Add(tile);
                     if (Util.debugPassable)
                         nonPassableNodes.Add(new DrawableNode(Util.toBoxPosition(tile)));
@@ -188,7 +189,8 @@ namespace MouseMoveMode
                 if (!funiture.isPassable())
                 {
                     // Object like stone etc should also consider breakable, thus should not be cache
-                    //this.Monitor.Log("Found unpassable furniture" + item, LogLevel.Info);
+                    if (Util.debugPassableVebose)
+                        ModEntry.getMonitor().Log("Found unpassable furniture" + funiture, LogLevel.Info);
                     cacheCantPassable.Add(tile);
                     if (Util.debugPassable)
                         nonPassableNodes.Add(new DrawableNode(Util.toBoxPosition(tile)));
