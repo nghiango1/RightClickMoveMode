@@ -9,7 +9,7 @@ namespace MouseMoveMode
 {
     class Util
     {
-        public static bool debugPassable { get; private set; } = true;
+        public static bool debugPassable { get; private set; } = false;
         private static bool debugPassableVebose = false;
         private static HashSet<Vector2> cacheCantPassable = new HashSet<Vector2>();
         private static List<DrawableNode> nonPassableNodes = new List<DrawableNode>();
@@ -244,7 +244,9 @@ namespace MouseMoveMode
          */
         public static Vector2 fixFragtionTile(Vector2 tile)
         {
-            return new Vector2((float)Math.Round(tile.X), (float)Math.Round(tile.Y));
+            // Some time player tiles does not match
+            var microTileAlter = 0.00f;
+            return new Vector2((float)Math.Truncate(tile.X), (float)Math.Truncate(tile.Y - microTileAlter));
         }
 
         /**
