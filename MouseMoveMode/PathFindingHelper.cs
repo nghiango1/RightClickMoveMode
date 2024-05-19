@@ -12,14 +12,21 @@ namespace MouseMoveMode
         // Logic control
         public bool debugVisitedTile = false;
         public bool debugVerbose = true;
-        public bool debugLineToTiles = true;
+        public bool debugLineToTiles = false;
+        public bool debugPathSmothing = true;
 
-        public bool doPathSmothing = true;
+        public bool usePathSmothing = true;
 
         private IMonitor Monitor;
         private List<DrawableNode> visitedNodes = new List<DrawableNode>();
         private Stack<DrawableNode> pathNodes = new Stack<DrawableNode>();
-        private List<DrawableNode> lineToTileNodes = new List<DrawableNode>();
+
+        // only being initilized when enable debug logic control flag
+        private List<DrawableNode> lineToTileNodes;
+
+        // only being initilized when enable debug logic control flag
+        private List<DrawableNode> pathSmothNodes;
+
         private DrawableNode targetNode = null;
 
         private float microTileDelta = 0.0001f;
@@ -34,6 +41,7 @@ namespace MouseMoveMode
         private Vector2 destination = new Vector2(0, 0);
         private Vector2 destinationTile = new Vector2(0, 0);
         private List<Vector2> path = new List<Vector2>();
+        private List<Vector2> pathPreSmoth = new List<Vector2>();
         private int currentStep = 0;
 
         public static bool isBestScoreFront { get; private set; }
@@ -48,6 +56,15 @@ namespace MouseMoveMode
             this.fScore.Clear();
             this.path.Clear();
 
+            if (this.usePathSmothing)
+            {
+                if (this.debugPathSmothing)
+                {
+                    this.pathPreSmoth.Clear();
+                    this.pathSmothNodes.Clear();
+                }
+            }
+
             this.visitedNodes.Clear();
             this.pathNodes.Clear();
         }
@@ -55,6 +72,16 @@ namespace MouseMoveMode
         public PathFindingHelper()
         {
             this.Monitor = ModEntry.getMonitor();
+
+            // Only show when debuging
+            if (this.usePathSmothing)
+            {
+                if (this.debugPathSmothing)
+                    this.pathSmothNodes = new List<DrawableNode>();
+            }
+
+            if (this.debugLineToTiles)
+                this.lineToTileNodes = new List<DrawableNode>();
         }
 
         /**
@@ -107,7 +134,14 @@ namespace MouseMoveMode
                 node.draw(b);
             if (targetNode is not null)
                 targetNode.draw(b, Color.Red);
+        }
 
+        public void drawPreSmothPath(SpriteBatch b)
+        {
+            foreach (var node in this.pathSmothNodes)
+                node.draw(b);
+            if (targetNode is not null)
+                targetNode.draw(b, Color.Red);
         }
 
         public void drawIndicator(SpriteBatch b)
@@ -121,7 +155,12 @@ namespace MouseMoveMode
             if (this.debugLineToTiles)
                 this.drawLineToTiles(b);
 
+            if (this.usePathSmothing)
+                if (this.debugPathSmothing)
+                    this.drawPreSmothPath(b);
+
             this.drawPath(b);
+
         }
 
         public void loadMap()
@@ -168,14 +207,16 @@ namespace MouseMoveMode
             var i = neighbor.X - current.X;
             var j = neighbor.Y - current.Y;
 
+            // Why we stand still
             if (i == 0 && j == 0)
                 return false;
+
             // tile isn't passable 
             if (!Util.isTilePassable(neighbor) || !Util.isTilePassable(current))
                 return false;
 
             // diagonal special case handling, just don't do it if there is a blockage
-            if (Vector2.Distance(current, neighbor) > 1.2f)
+            if ((i == 1 || i == -1) && (j == 1 || j == -1))
             {
                 if (!Util.isTilePassable(current.X, neighbor.Y) || !Util.isTilePassable(neighbor.X, current.Y))
                 {
@@ -344,14 +385,13 @@ namespace MouseMoveMode
             updatePath();
         }
 
-        public void updatePath()
+        public List<Vector2> tracebackAndUpscalePath()
         {
             var temp = new Stack<Vector2>();
             // We may not add destination here, as it could be un reachable
             if (this.cameFrom.ContainsKey(Util.toTile(this.destination)))
             {
                 temp.Push(this.destination);
-                this.pathNodes.Push(new DrawableNode(this.destination));
             }
 
             Vector2 startTile = getPlayerStandingTile();
@@ -359,29 +399,63 @@ namespace MouseMoveMode
             while (Vector2.Distance(pointerTile, startTile) > this.microTileDelta)
             {
                 var traceBackPosition = this.addPadding(pointerTile);
-                if (this.debugVerbose)
-                    this.Monitor.Log("Path: " + traceBackPosition, LogLevel.Info);
+                // if (this.debugVerbose) this.Monitor.Log("Path: " + traceBackPosition, LogLevel.Info);
 
                 temp.Push(traceBackPosition);
-                this.pathNodes.Push(new DrawableNode(traceBackPosition));
                 pointerTile = this.cameFrom[pointerTile];
             }
 
             // Could be needed, but player already consider standing on this tile
             // it for extra protection that player can still stuck for any reason
             temp.Push(this.addPadding(startTile));
-            this.pathNodes.Push(new DrawableNode(startTile));
+
+            List<Vector2> result = new List<Vector2>();
 
             while (temp.Count > 0)
             {
-                this.path.Add(temp.Pop());
+                result.Add(temp.Pop());
+            }
+            return result;
+        }
+
+        public void updatePath()
+        {
+            var path = tracebackAndUpscalePath();
+
+            if (usePathSmothing)
+            {
+                if (debugPathSmothing)
+                {
+                    this.pathSmothNodes.Clear();
+                    this.pathPreSmoth = path;
+                    foreach (var step in path)
+                    {
+                        var node = new DrawableNode(step);
+                        node.color = Color.Red;
+                        this.pathSmothNodes.Add(node);
+                    }
+                }
+
+                path = findSmothPath(path);
             }
 
-            if (doPathSmothing)
+            // Update path to use the smoothen path
+            this.path.Clear();
+            for (var i = 0; i < path.Count; i += 1)
             {
-                // This allowing us to be in unstuckable position when begin to
-                // move from the start tile
-                pathSmothing();
+                this.path.Add(path[i]);
+                if (this.debugVerbose)
+                {
+                    this.Monitor.Log("Path: " + path[i], LogLevel.Info);
+                }
+            }
+
+            // Update path indicator to use the smoothen path
+            this.pathNodes.Clear();
+            for (var i = path.Count - 1; i >= 0; i -= 1)
+            {
+                var node = new DrawableNode(path[i]);
+                this.pathNodes.Push(node);
             }
         }
 
@@ -406,14 +480,12 @@ namespace MouseMoveMode
             {
                 if (checkLeft)
                 {
-                    if (this.debugVerbose)
-                        this.Monitor.Log("Left blockage", LogLevel.Info);
+                    //if (this.debugVerbose) this.Monitor.Log("Left blockage", LogLevel.Info);
                     padX = (box.Width / 2 + microRounding);
                 }
                 if (checkRight)
                 {
-                    if (this.debugVerbose)
-                        this.Monitor.Log("Right blockage", LogLevel.Info);
+                    //if (this.debugVerbose) this.Monitor.Log("Right blockage", LogLevel.Info);
                     padX = 64 - (box.Width / 2 + microRounding);
                 }
             }
@@ -433,13 +505,18 @@ namespace MouseMoveMode
                 if (checkTop)
                 {
                     if (this.debugVerbose)
-                        this.Monitor.Log("Top blockage", LogLevel.Info);
+                    {
+                        //this.Monitor.Log("Top blockage", LogLevel.Info);
+
+                    }
                     padY = (box.Height / 2 + microRounding);
                 }
                 if (checkBottom)
                 {
                     if (this.debugVerbose)
-                        this.Monitor.Log("Bottom blockage", LogLevel.Info);
+                    {
+                        //this.Monitor.Log("Bottom blockage", LogLevel.Info);
+                    }
                     padY = 64 - (box.Height / 2 + microRounding);
                 }
             }
@@ -536,14 +613,14 @@ namespace MouseMoveMode
             return !isBlocked;
         }
 
-        public void pathSmothing()
+        public List<Vector2> findSmothPath(List<Vector2> path)
         {
-            if (this.path.Count <= 2)
+            if (path.Count <= 2)
             {
-                return;
+                return path;
             }
             var t = new List<Vector2>();
-            var s = this.path;
+            var s = path;
 
             // For debuging
             bool flushAllDrawedNode = true;
@@ -571,31 +648,9 @@ namespace MouseMoveMode
                 currentIndex = nextIndex;
             }
 
-            // Update path to use the smoothen path
-            this.path.Clear();
-            for (var i = 0; i < t.Count; i += 1)
-            {
-                this.path.Add(t[i]);
-                if (this.debugVerbose)
-                {
-                    this.Monitor.Log("Path (smoothening): " + t[i], LogLevel.Info);
-                }
-            }
-
-            // Update path indicator to use the smoothen path
-            this.pathNodes.Clear();
-            for (var i = t.Count - 1; i >= 0; i -= 1)
-            {
-                var node = new DrawableNode(t[i]);
-                this.pathNodes.Push(node);
-
-                if (debugLineToTiles)
-                {
-                    node.color = Color.Red;
-                    this.lineToTileNodes.Add(node);
-                }
-            }
+            return t;
         }
+
 
         /**
          * @brief This just give the next path if player has reach the current
@@ -607,11 +662,11 @@ namespace MouseMoveMode
             {
                 if (debugVerbose)
                 {
-                    this.Monitor.Log("This greate, we reach the end " + currentStep, LogLevel.Info);
-                    foreach (var t in this.path)
-                    {
-                        this.Monitor.Log("Path visited: " + t, LogLevel.Info);
-                    }
+                    // this.Monitor.Log("This greate, we reach the end " + currentStep, LogLevel.Info);
+                    // foreach (var t in this.path)
+                    // {
+                    //     this.Monitor.Log("Path visited: " + t, LogLevel.Info);
+                    // }
                 }
                 return null;
             }
