@@ -599,14 +599,15 @@ namespace MouseMoveMode
             for (var i = 0; i < lineTiles.Count; i += 1)
             {
                 var tile = Util.fixFragtionTile(lineTiles[i]);
-                var prev = startTile;
                 if (i > 0)
-                    prev = Util.fixFragtionTile(lineTiles[i - 1]);
-                // But we going from start, so this need to walk backward
-                if (!isValidMovement(tile, prev))
                 {
-                    isBlocked = true;
-                    break;
+                    var prev = Util.fixFragtionTile(lineTiles[i - 1]);
+                    // But we going from start, so this need to walk backward
+                    if (!isValidMovement(tile, prev))
+                    {
+                        isBlocked = true;
+                        break;
+                    }
                 }
             }
 
@@ -636,12 +637,13 @@ namespace MouseMoveMode
                     if (nextIndex >= i) continue;
                     if (checkValidLine(s[currentIndex], s[i]))
                     {
-                        nextIndex = i;
                         if (this.debugLineToTiles)
                         {
-                            updateLineToTiles(s[currentIndex], s[nextIndex], flushAllDrawedNode: flushAllDrawedNode);
+                            updateLineToTiles(s[currentIndex], s[i], flushAllDrawedNode: flushAllDrawedNode);
                             flushAllDrawedNode = false;
                         }
+                        nextIndex = i;
+                        break;
                     }
                 }
                 t.Add(s[nextIndex]);
