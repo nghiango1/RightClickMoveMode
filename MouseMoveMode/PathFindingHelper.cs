@@ -11,7 +11,7 @@ namespace MouseMoveMode
     {
         // Logic control
         public bool debugVisitedTile = false;
-        public bool debugVerbose = false;
+        public bool debugVerbose = true;
         public bool debugLineToTiles = false;
         public bool debugPathSmothing = false;
 
@@ -369,7 +369,7 @@ namespace MouseMoveMode
 
                     // We favor player to be infront of the destination, this make the path found more reliable-ish
                     // Again, within-limit of the effective reach for the object. I just hard code 1 tiles here atm
-                    if (neighbor.X == this.destinationTile.X && (neighbor.Y - this.destinationTile.Y >= 0) && (neighbor.Y - this.destinationTile.Y) < 1.1f)
+                    if (neighbor.X == this.destinationTile.X && neighbor.Y - this.destinationTile.Y >= 0 && neighbor.Y - this.destinationTile.Y < 1.1f)
                     {
                         if (!isBestScoreFront)
                         {
@@ -739,12 +739,13 @@ namespace MouseMoveMode
             Vector2 next = this.destination;
             if (optionalNext is not null)
                 next = optionalNext.Value;
-            Vector2 player = Game1.player.GetBoundingBox().Center.ToVector2();
-            Vector2 direction = Vector2.Subtract(next, player);
+            Vector2 playerPosition = Game1.player.GetBoundingBox().Center.ToVector2();
+            Vector2 direction = Vector2.Subtract(next, playerPosition);
 
-            // When destination is reach-able, and we found the path lead to it
+            // When destination seem reach-able
             if (Util.isTilePassable(Util.toTile(this.destination)))
             {
+                // and we found the path lead to it
                 if (Util.toTile(this.destination) == this.destinationTile)
                 {
                     // Which mean moving will end when we reach the destination tile
@@ -767,15 +768,20 @@ namespace MouseMoveMode
                     {
                         this.Monitor.Log("Destination tile seem unreachable, as we haven't found the path to it yet", LogLevel.Info);
                     }
+                    if (Vector2.Distance(playerPosition, direction) < this.microPositionDelta)
+                    {
+                        this.Monitor.Log("Destination tile reach? nice", LogLevel.Info);
+                        return new Vector2(0, 0);
+                    }
                     return direction;
                 }
             }
 
             // So if destination is unreachable, player will kept moving till
-            // we got stuck colliding with the destination
+            // we got stuck colliding with the destination?
             if (optionalNext is null)
             {
-                if (!Game1.player.isColliding(Game1.player.currentLocation, Util.toTile(this.destination)))
+                if (!ModEntry.checkColidingIfMoving())
                 {
                     return direction;
                 }
