@@ -10,7 +10,7 @@ namespace MouseMoveMode
     class PathFindingHelper
     {
         // Logic control
-        public bool debugVisitedTile = false;
+        public bool debugVisitedTile = true;
         public bool debugVerbose = true;
         public bool debugLineToTiles = false;
         public bool debugPathSmothing = false;
@@ -286,6 +286,24 @@ namespace MouseMoveMode
             return true;
         }
 
+        /**
+         * @brief Score calculate between two node (to chose a path)
+         * the lower the better
+         */
+        private float calculateGScore(Vector2 srcPos, Vector2 desPos)
+        {
+            return Vector2.Distance(srcPos, desPos);
+        }
+
+        /**
+         * @brief Score calculate for a tile to the end/destination (of a path)
+         * the lower the better
+         */
+        private float calculateFScore(Vector2 srcPos)
+        {
+            return Vector2.Distance(srcPos, this.destination);
+        }
+
         public void aStarPathFinding(Vector2 destination)
         {
             GameLocation gl = Game1.player.currentLocation;
@@ -293,16 +311,18 @@ namespace MouseMoveMode
 
             // This preventing error when changing or rounding destination multiple times
             this.destinationTile = Util.toTile(this.destination);
+
             this.pq.Enqueue(getPlayerStandingTile(), 0);
 
             Vector2 start = getPlayerStandingTile();
             // This also favor consider player in front of destination
             isBestScoreFront = false;
             Vector2 bestScoreTile = start;
-            float bestScore = Vector2.Distance(Game1.player.Position, this.destination);
+            // We favor destination that closer to the destination
+            float bestScore = Vector2.Distance(Util.toPosition(start), this.destination);
 
             gScore.Add(start, 0);
-            fScore.Add(start, Vector2.Distance(Game1.player.Position, this.destination));
+            fScore.Add(start, calculateFScore(this.destination));
 
             // I just too dumb so let limit the time we try to find best past
             // we have a quite small available click screen so it fine as long
@@ -312,6 +332,10 @@ namespace MouseMoveMode
             {
                 limit -= 1;
                 var current = pq.Dequeue();
+                if (debugVerbose)
+                {
+                    ModEntry.getMonitor().Log(String.Format("[Step {2}] Current {3} or in tile {0} = {1} fScore {4}", current, gScore[current], 100 - limit, addPadding(current), fScore[current]), LogLevel.Info);
+                }
 
                 if (Vector2.Distance(current, this.destinationTile) < this.microTileDelta)
                 {
@@ -343,7 +367,7 @@ namespace MouseMoveMode
                     visited.Add(neighbor);
                     this.visitedNodes.Add(new DrawableNode(Util.toBoxPosition(neighbor)));
 
-                    var temp = gScore[current] + Vector2.Distance(Util.toPosition(current), Util.toPosition(neighbor));
+                    var temp = gScore[current] + calculateGScore(Util.toPosition(current), Util.toPosition(neighbor));
                     if (gScore.ContainsKey(neighbor))
                     {
                         if (gScore[neighbor] < temp)
@@ -354,14 +378,14 @@ namespace MouseMoveMode
                         {
                             this.cameFrom[neighbor] = current;
                             gScore[neighbor] = temp;
-                            fScore[neighbor] = temp + Vector2.Distance(Util.toPosition(neighbor), this.destination);
+                            fScore[neighbor] = temp + calculateFScore(Util.toPosition(neighbor));
                         }
                     }
                     else
                     {
                         this.cameFrom.Add(neighbor, current);
                         gScore.Add(neighbor, temp);
-                        fScore.Add(neighbor, temp + Vector2.Distance(Util.toPosition(neighbor), this.destination));
+                        fScore.Add(neighbor, temp + calculateFScore(Util.toPosition(neighbor)));
                     }
 
                     pq.Enqueue(neighbor, fScore[neighbor]);
@@ -374,12 +398,16 @@ namespace MouseMoveMode
                         {
                             bestScore = Vector2.Distance(Util.toPosition(neighbor), this.destination);
                             bestScoreTile = neighbor;
+                            if (this.debugVerbose)
+                                this.Monitor.Log(String.Format("Update closest tile to {0}, with distance {1}", bestScoreTile, bestScore), LogLevel.Info);
                         }
                         isBestScoreFront = true;
                         if (isBestScoreFront && (bestScore > Vector2.Distance(Util.toPosition(neighbor), this.destination)))
                         {
                             bestScore = Vector2.Distance(Util.toPosition(neighbor), this.destination);
                             bestScoreTile = neighbor;
+                            if (this.debugVerbose)
+                                this.Monitor.Log(String.Format("Update closest tile to {0}, with distance {1}", bestScoreTile, bestScore), LogLevel.Info);
                         }
                     }
                     else
@@ -388,6 +416,8 @@ namespace MouseMoveMode
                         {
                             bestScore = Vector2.Distance(Util.toPosition(neighbor), this.destination);
                             bestScoreTile = neighbor;
+                            if (this.debugVerbose)
+                                this.Monitor.Log(String.Format("Update closest tile to {0}, with distance {1}", bestScoreTile, bestScore), LogLevel.Info);
                         }
                     }
                 }
@@ -395,6 +425,8 @@ namespace MouseMoveMode
 
             // Destination tile is unreach-able (or no path found within limit),
             // so we goes to the closest tile or the in-front tile
+            if (this.debugVerbose)
+                this.Monitor.Log("Can't found path within time!, change to closest tile found" + bestScoreTile, LogLevel.Info);
             this.destinationTile = bestScoreTile;
             updatePath();
         }
@@ -408,6 +440,8 @@ namespace MouseMoveMode
             // We may not add destination here, as it could be un reachable
             if (this.cameFrom.ContainsKey(Util.toTile(this.destination)))
             {
+                if (debugVerbose)
+                    ModEntry.getMonitor().Log(String.Format("Path traceback (start): {0} or in tile {1}", this.destination, Util.toTile(this.destination)));
                 temp.Push(this.destination);
             }
 
@@ -419,6 +453,8 @@ namespace MouseMoveMode
             while (Vector2.Distance(pointerTile, startTile) > this.microTileDelta)
             {
                 var traceBackPosition = this.addPadding(pointerTile);
+                if (debugVerbose)
+                    ModEntry.getMonitor().Log(String.Format("Path traceback (loop): {0} or in tile {1}", traceBackPosition, pointerTile));
                 // if (this.debugVerbose) this.Monitor.Log("Path: " + traceBackPosition, LogLevel.Info);
 
                 temp.Push(traceBackPosition);
@@ -428,6 +464,8 @@ namespace MouseMoveMode
             // Could be needed, but player already consider standing on this tile
             // it for extra protection that player can still stuck for any reason
             temp.Push(this.addPadding(startTile));
+            if (debugVerbose)
+                ModEntry.getMonitor().Log(String.Format("Path traceback (end): {0} or in tile {1}", temp.Peek(), startTile));
 
             List<Vector2> result = new List<Vector2>();
 
@@ -496,7 +534,7 @@ namespace MouseMoveMode
                 this.path.Add(path[i]);
                 if (this.debugVerbose)
                 {
-                    this.Monitor.Log("Path: " + path[i], LogLevel.Info);
+                    this.Monitor.Log(String.Format("Path: {0} of in tile {1}", path[i], Util.toTile(path[i])), LogLevel.Info);
                 }
             }
 
