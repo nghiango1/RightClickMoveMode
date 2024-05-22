@@ -36,7 +36,6 @@ namespace MouseMoveMode
 
         public static bool isMovingAutomaticaly = false;
         public static bool isBeingAutoCommand = false;
-        public static bool isMouseOutsiteHitBox = false;
 
         // This flag usage is to temprorary break the auto moving 
         public static bool isBeingControl = false;
@@ -309,18 +308,28 @@ namespace MouseMoveMode
                 return;
             }
 
-            position_Destination = new Vector2(Game1.viewport.X, Game1.viewport.Y) + position_MouseOnScreen;
-            pathFindingHelper.changeDes(position_Destination);
+            ModEntry.position_Destination = new Vector2(Game1.viewport.X, Game1.viewport.Y) + position_MouseOnScreen;
+            var desitinationTile = Util.toTile(ModEntry.position_Destination);
+
+            // Like why
+            ModEntry.pathFindingHelper.changeDes(Util.toPosition(desitinationTile));
 
             // This could null, so we know that we won't chasing a NPC when this null
-            pointedNPC = Game1.player.currentLocation.isCharacterAtTile(grabTile);
+            ModEntry.pointedNPC = Game1.player.currentLocation.isCharacterAtTile(desitinationTile);
             if (ModEntry.isDebugVerbose)
                 if (pointedNPC is not null)
                     this.Monitor.Log(String.Format("Found NPC {0} at destination {1}", pointedNPC, position_Destination), LogLevel.Info);
 
+
             // We also let the game to handle right-click normally
             // If it within one tile randius vs the player
             bool isMouseWithinRadiusOfPlayer = Utility.withinRadiusOfPlayer((int)position_Destination.X, (int)position_Destination.Y, 1, Game1.player);
+
+            if (isDebugVerbose)
+            {
+                isMouseWithinRadiusOfPlayer = false;
+            }
+
             if (isMouseWithinRadiusOfPlayer)
             {
                 if (ModEntry.isDebugVerbose)
@@ -354,16 +363,16 @@ namespace MouseMoveMode
                     isActionableAtDesinationTile = checkActionableTile(ModEntry.grabTile);
                     if (isActionableAtDesinationTile)
                         ModEntry.grabTile = ModEntry.grabTile + new Vector2(0, 1);
+                    // Well, I will make it true no matter what, it just to
+                    // ditect any interaction that didn't being handler, like if
+                    // there isn't anything there should be no problem what ever
+                    if (ModEntry.isDebugVerbose)
+                    {
+                        this.Monitor.Log("Can't found any thing really, but we try anyway", LogLevel.Info);
+                        isActionableAtDesinationTile = true;
+                    }
                 }
 
-                // Well, I will make it true no matter what, it just to
-                // ditect any interaction that didn't being handler, like if
-                // there isn't anything there should be no problem what ever
-                if (ModEntry.isDebugVerbose)
-                {
-                    this.Monitor.Log("Can't found any thing really, but we try anyway", LogLevel.Info);
-                    //isActionableAtDesinationTile = true;
-                }
             }
 
         }
@@ -453,6 +462,11 @@ namespace MouseMoveMode
             return false;
         }
 
+        /**
+         * @brief there is only one button being handle here, by passing it over
+         * multiple function, which return if we properly handle it? if it true
+         * then we can stop at that point
+         */
         private void ButtonPressedMods(object sender, ButtonPressedEventArgs e)
         {
             if (!Context.IsWorldReady)
@@ -513,7 +527,8 @@ namespace MouseMoveMode
             // Our configured force move button should not break movement
             // Any button that not handled till now should break the movement
             // but only for a temprorary time
-            if (!config.ForceMoveButton.IsDown()) {
+            if (!config.ForceMoveButton.IsDown())
+            {
                 ModEntry.isBeingControl = true;
 
                 // When we is holding move, we allowing some acction that will not
@@ -565,7 +580,7 @@ namespace MouseMoveMode
                 if (Game1.player.ActiveObject.isPlaceable())
                 {
                     if (ModEntry.isDebugVerbose)
-                        this.Monitor.Log(String.Format("Found active item {0} to be place-able, we will place thing at the pointed place", Game1.player.ActiveItem), LogLevel.Info);
+                        this.Monitor.Log(String.Format("Found active item {0} to be place-able, we will try to place thing at the pointed place", Game1.player.ActiveItem), LogLevel.Info);
                     return true;
                 }
             }
@@ -603,6 +618,17 @@ namespace MouseMoveMode
                 {
                     if (ModEntry.isDebugVerbose)
                         this.Monitor.Log(String.Format("Found {0} at the pointed place", large), LogLevel.Info);
+                    return true;
+                }
+            }
+
+            var funiture = gl.GetFurnitureAt(grabTile);
+            if (funiture is not null)
+            {
+                if (funiture.isActionable(Game1.player))
+                {
+                    if (ModEntry.isDebugVerbose)
+                        this.Monitor.Log(String.Format("Found actionable {0} at the pointed place", funiture), LogLevel.Info);
                     return true;
                 }
             }
@@ -698,23 +724,36 @@ namespace MouseMoveMode
          */
         public static void TryToCheckGrapTile(Vector2 grabTile)
         {
+            // If there is no need for action then bail out
             if (!isActionableAtDesinationTile)
                 return;
+
             if (ModEntry.isDebugVerbose)
                 ModEntry.getMonitor().Log(String.Format("Trying to check grap tile {0}", grabTile), LogLevel.Info);
 
             // Auto dismount the player first if destination tile is actionable
             if (Game1.player.isRidingHorse())
             {
-                if (isActionableAtDesinationTile && Utility.tileWithinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 2, Game1.player))
+                if (Utility.tileWithinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 2, Game1.player))
                     Game1.player.mount.dismount();
                 if (ModEntry.isDebugVerbose)
                     ModEntry.getMonitor().Log(String.Format("We dismount the horse"), LogLevel.Info);
+                // We kinna done with this tick here
+                return;
+            }
+
+            // Recheck if the tile is within our grab range
+            var isWinthinPlayerGrapRange = Utility.tileWithinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 1, Game1.player);
+            if (!isWinthinPlayerGrapRange)
+            {
+                if (ModEntry.isDebugVerbose)
+                    ModEntry.getMonitor().Log(String.Format("Precheck before tring any action trigger as grabtile {0} is too far from {1}", grabTile, Game1.player.Tile), LogLevel.Info);
                 return;
             }
 
             // Recheck again, as we might change grabTile to bellow one under destination
-            pointedNPC = Game1.player.currentLocation.isCharacterAtTile(grabTile);
+            // This is quite over kill
+            // pointedNPC = Game1.player.currentLocation.isCharacterAtTile(grabTile);
 
             // This overide all other action interaction
             if (pointedNPC is not null)
@@ -735,15 +774,7 @@ namespace MouseMoveMode
                 return;
             }
 
-            // Okay?
-            if (!Utility.tileWithinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 1, Game1.player))
-            {
-                if (ModEntry.isDebugVerbose)
-                    ModEntry.getMonitor().Log(String.Format("Precheck before tring any action trigger as grabtile {0} is too far from {1}", grabTile, Game1.player.Tile), LogLevel.Info);
-                return;
-            }
-
-            // Try to place the item next instead, I think it have higher piority
+            // Try to place the item next, It have higher piority
             if (Game1.player.ActiveObject is not null)
                 if (isActionableAtDesinationTile && Game1.player.ActiveObject.isPlaceable() && Game1.player.currentLocation.CanItemBePlacedHere(grabTile))
                 {
@@ -759,10 +790,6 @@ namespace MouseMoveMode
                         return;
                     }
                 }
-
-            // After that, try to perform an action directly on destination tile
-            if (ModEntry.isDebugVerbose)
-                ModEntry.getMonitor().Log(String.Format("Try checked at tile {0}", grabTile), LogLevel.Info);
 
             var isChecked = Game1.player.currentLocation.checkAction(new xTile.Dimensions.Location((int)grabTile.X, (int)grabTile.Y), Game1.viewport, Game1.player);
             if (isChecked)
