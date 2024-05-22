@@ -193,7 +193,7 @@ namespace MouseMoveMode
 
             this.flushCache();
             Util.flushCache();
-            targetNode = new DrawableNode(destination);
+            targetNode = new DrawableNode(Util.toBoxPosition(destination));
             currentStep = 0;
             aStarPathFinding(destination);
 
@@ -313,7 +313,6 @@ namespace MouseMoveMode
                 limit -= 1;
                 var current = pq.Dequeue();
 
-                // Being extra cautious here, as this is the true end for a_star
                 if (Vector2.Distance(current, this.destinationTile) < this.microTileDelta)
                 {
                     this.destinationTile = current;
@@ -413,6 +412,9 @@ namespace MouseMoveMode
             }
 
             Vector2 startTile = getPlayerStandingTile();
+
+            // Destination tile shoul alway be access-able, but it may doublicate
+            // with the destination
             Vector2 pointerTile = this.destinationTile;
             while (Vector2.Distance(pointerTile, startTile) > this.microTileDelta)
             {

@@ -73,7 +73,7 @@ namespace MouseMoveMode
             var position = Game1.GlobalToLocal(Game1.viewport, new Vector2(boxPosistion.X, boxPosistion.Y));
             // The size of rectangle that will contain the sprite texture for green tilte appreared when you
             // powering the tool
-            var sourceRectangle = new Rectangle(194, 388, 16, 16);
+            var sourceRectangle = new Rectangle(210, 388, 16, 16);
             var rotation = 0f;
             // Start at top-left
             var origin = new Vector2(0f, 0f);
