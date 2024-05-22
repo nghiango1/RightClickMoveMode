@@ -12,7 +12,7 @@ namespace MouseMoveMode
         public static void drawRedBox(SpriteBatch b, Rectangle boxPosistion)
         {
             var color = Color.Red;
-            DrawHelper._drawBox(b, boxPosistion, color);
+            DrawHelper._drawBox(b, boxPosistion, color, textureRow: 210);
         }
 
         /**
@@ -65,15 +65,16 @@ namespace MouseMoveMode
          * @param b can access via Event Rendered input `e.SpriteBatch`
          * @param posistion to be draw on screen
          * @param color (default will be green) be draw on screen
+         * @param texture (default will be green box) texture index be draw on screen
          */
-        private static void _drawBox(SpriteBatch b, Rectangle boxPosistion, Color color)
+        private static void _drawBox(SpriteBatch b, Rectangle boxPosistion, Color color, int textureRow = 194)
         {
             // This have full texture2D
             var texture2D = Game1.mouseCursors;
             var position = Game1.GlobalToLocal(Game1.viewport, new Vector2(boxPosistion.X, boxPosistion.Y));
             // The size of rectangle that will contain the sprite texture for green tilte appreared when you
             // powering the tool
-            var sourceRectangle = new Rectangle(210, 388, 16, 16);
+            var sourceRectangle = new Rectangle(textureRow, 388, 16, 16);
             var rotation = 0f;
             // Start at top-left
             var origin = new Vector2(0f, 0f);
