@@ -249,7 +249,7 @@ namespace MouseMoveMode
          */
         public static Vector2 toTile(Vector2 position)
         {
-            return new Vector2((float)Math.Round(position.X / 64f), (float)Math.Round(position.Y / 64f));
+            return new Vector2((float)Math.Truncate(position.X / 64f), (float)Math.Truncate(position.Y / 64f));
         }
 
         /**
