@@ -1,4 +1,5 @@
 using StardewValley;
+using StardewValley.Objects;
 using System;
 using Microsoft.Xna.Framework;
 using System.Collections.Generic;
@@ -186,6 +187,21 @@ namespace MouseMoveMode
             var funiture = gl.GetFurnitureAt(tile);
             if (funiture is not null)
             {
+                // Some how bed is not passable, player can't go into bed using
+                // path finding
+                if (funiture is BedFurniture)
+                {
+                    var bed = (BedFurniture)funiture;
+                    if (bed.bedType != BedFurniture.BedType.Child)
+                    {
+                        var bedSpot = bed.TileLocation;
+                        if (tile.X <= bedSpot.X + bed.getTilesWide() & tile.X >= bedSpot.X & tile.Y > bedSpot.Y & tile.Y < bedSpot.Y + 2)
+                        {
+                            ModEntry.getMonitor().Log("Found unpassable furniture" + funiture, LogLevel.Info);
+                            return true;
+                        }
+                    }
+                }
                 if (!funiture.isPassable())
                 {
                     // Object like stone etc should also consider breakable, thus should not be cache
