@@ -10,8 +10,8 @@ namespace MouseMoveMode
     class PathFindingHelper
     {
         // Logic control
-        public bool debugVisitedTile = true;
-        public bool debugVerbose = true;
+        public bool debugVisitedTile = false;
+        public bool debugVerbose = false;
         public bool debugLineToTiles = false;
         public bool debugPathSmothing = false;
 
@@ -315,9 +315,12 @@ namespace MouseMoveMode
             this.pq.Enqueue(getPlayerStandingTile(), 0);
 
             Vector2 start = getPlayerStandingTile();
+
             // This also favor consider player in front of destination
             isBestScoreFront = false;
+
             Vector2 bestScoreTile = start;
+
             // We favor destination that closer to the destination
             float bestScore = Vector2.Distance(Util.toPosition(start), this.destination);
 
@@ -327,7 +330,7 @@ namespace MouseMoveMode
             // I just too dumb so let limit the time we try to find best past
             // we have a quite small available click screen so it fine as long
             // as the limit can match the total screen tile
-            int limit = 100;
+            int limit = ModEntry.config.PathFindLimit;
             while (pq.Count > 0 && limit > 0)
             {
                 limit -= 1;
@@ -408,6 +411,14 @@ namespace MouseMoveMode
                             bestScoreTile = neighbor;
                             if (this.debugVerbose)
                                 this.Monitor.Log(String.Format("Update closest tile to {0}, with distance {1}", bestScoreTile, bestScore), LogLevel.Info);
+
+                        }
+                        // Some time, destination tile isn't passable, we found a closest one in front then it good enough to end here
+                        if (!Util.isTilePassable(this.destinationTile) && bestScore < 80f)
+                        {
+                            this.destinationTile = bestScoreTile;
+                            updatePath();
+                            return;
                         }
                     }
                     else
@@ -418,6 +429,14 @@ namespace MouseMoveMode
                             bestScoreTile = neighbor;
                             if (this.debugVerbose)
                                 this.Monitor.Log(String.Format("Update closest tile to {0}, with distance {1}", bestScoreTile, bestScore), LogLevel.Info);
+
+                            // Some time, destination tile isn't passable, we found a closest one that good enough to end here
+                            if (!Util.isTilePassable(this.destinationTile + new Vector2(0, 1)) && !Util.isTilePassable(this.destinationTile) && bestScore < 80f)
+                            {
+                                this.destinationTile = bestScoreTile;
+                                updatePath();
+                                return;
+                            }
                         }
                     }
                 }

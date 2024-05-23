@@ -197,7 +197,8 @@ namespace MouseMoveMode
                         var bedSpot = bed.TileLocation;
                         if (tile.X <= bedSpot.X + bed.getTilesWide() & tile.X >= bedSpot.X & tile.Y > bedSpot.Y & tile.Y < bedSpot.Y + 2)
                         {
-                            ModEntry.getMonitor().Log("Found unpassable furniture" + funiture, LogLevel.Info);
+                            if (debugPassableVebose)
+                                ModEntry.getMonitor().Log("Found unpassable furniture" + funiture, LogLevel.Info);
                             return true;
                         }
                     }

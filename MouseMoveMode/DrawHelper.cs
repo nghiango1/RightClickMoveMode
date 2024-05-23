@@ -67,23 +67,29 @@ namespace MouseMoveMode
          * @param color (default will be green) be draw on screen
          * @param texture (default will be green box) texture index be draw on screen
          */
-        private static void _drawBox(SpriteBatch b, Rectangle boxPosistion, Color color, int textureRow = 194)
+        private static void _drawBox(SpriteBatch b, Rectangle boxPosistion, Color color, int textureRow = 194, int textureCol = 388, int textureSize = 16)
         {
             // This have full texture2D
             var texture2D = Game1.mouseCursors;
             var position = Game1.GlobalToLocal(Game1.viewport, new Vector2(boxPosistion.X, boxPosistion.Y));
             // The size of rectangle that will contain the sprite texture for green tilte appreared when you
             // powering the tool
-            var sourceRectangle = new Rectangle(textureRow, 388, 16, 16);
+            var sourceRectangle = new Rectangle(textureRow, textureCol, textureSize, textureSize);
             var rotation = 0f;
             // Start at top-left
             var origin = new Vector2(0f, 0f);
-            var scale = new Vector2(boxPosistion.Width / 64f * 4f, boxPosistion.Height / 64f * 4f);
+            var scale = new Vector2(boxPosistion.Width / 64f * 4f * 16f / textureSize, boxPosistion.Height / 64f * 4f * 16f / textureSize);
             var effect = SpriteEffects.None;
             // Same layer with tool effective range indicator (green tilte appeared when you powering the tool)
             var layerDepth = 0.01f;
 
             b.Draw(texture2D, position, sourceRectangle, color, rotation, origin, scale, effect, layerDepth);
+        }
+
+        public static void drawCursorHelper(SpriteBatch b, Rectangle boxPosistion)
+        {
+            var box = Game1.getSourceRectForStandardTileSheet(Game1.mouseCursors, 29);
+            _drawBox(b, boxPosistion, Color.White, textureRow: box.X, textureCol: box.Y, textureSize: box.Width);
         }
     }
 }
