@@ -26,6 +26,7 @@ namespace MouseMoveMode
         public float MouseWhellingMinZoom = Options.minZoom;
         public KeybindList FullScreenKeybindShortcut { get; set; } = KeybindList.Parse("RightAlt + Enter");
         public int PathFindLimit { get; set; } = 500;
+        public bool ShowMousePositionHint { get; set; } = true;
     }
 
     /// <summary>The mod entry point.</summary>
@@ -100,9 +101,12 @@ namespace MouseMoveMode
             if (!config.RightClickMoveModeDefault)
                 return;
 
-            var mouseHelper = ModEntry.position_MouseOnScreen + new Vector2(Game1.viewport.X, Game1.viewport.Y);
-            var mouseBox = Util.toBoxPosition(Util.toTile(mouseHelper));
-            DrawHelper.drawCursorHelper(e.SpriteBatch, mouseBox);
+            if (config.ShowMousePositionHint)
+            {
+                var mouseHelper = ModEntry.position_MouseOnScreen + new Vector2(Game1.viewport.X, Game1.viewport.Y);
+                var mouseBox = Util.toBoxPosition(Util.toTile(mouseHelper));
+                DrawHelper.drawCursorHelper(e.SpriteBatch, mouseBox);
+            }
 
             if (ModEntry.isMovingAutomaticaly && !ModEntry.isHoldingMove && !ModEntry.isBeingControl)
             {
@@ -409,7 +413,8 @@ namespace MouseMoveMode
                 return false;
             }
 
-            bool isMouseWithinRadiusOfPlayer = Utility.withinRadiusOfPlayer((int)position_Destination.X, (int)position_Destination.Y, 1, Game1.player);
+            var mousePosition = ModEntry.position_MouseOnScreen + new Vector2(Game1.viewport.X, Game1.viewport.Y);
+            bool isMouseWithinRadiusOfPlayer = Utility.withinRadiusOfPlayer((int)mousePosition.X, (int)mousePosition.Y, 1, Game1.player);
 
             if (config.WeaponsSpecticalInteractionType == 1)
             {
@@ -516,7 +521,8 @@ namespace MouseMoveMode
                 var isWeapon = tool is MeleeWeapon;
                 if (isWeapon)
                 {
-                    this.Monitor.Log("It seem we using weapon here");
+                    if (ModEntry.isDebugVerbose)
+                        this.Monitor.Log("It seem we using weapon here");
 
                     isFinishHandling = handleWhenUsingWeapon(e.Button, (MeleeWeapon)tool);
                     if (isFinishHandling) return;
