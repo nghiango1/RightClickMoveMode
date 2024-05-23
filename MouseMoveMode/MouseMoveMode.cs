@@ -25,6 +25,7 @@ namespace MouseMoveMode
         public float MouseWhellingMaxZoom = Options.maxZoom;
         public float MouseWhellingMinZoom = Options.minZoom;
         public KeybindList FullScreenKeybindShortcut { get; set; } = KeybindList.Parse("RightAlt + Enter");
+        public int PathFindLimit { get; set; } = 500;
     }
 
     /// <summary>The mod entry point.</summary>
@@ -61,7 +62,7 @@ namespace MouseMoveMode
 
         private static PathFindingHelper pathFindingHelper;
 
-        public static bool isDebugVerbose = true;
+        public static bool isDebugVerbose = false;
 
         /*********
         ** Public methods
@@ -98,6 +99,10 @@ namespace MouseMoveMode
 
             if (!config.RightClickMoveModeDefault)
                 return;
+
+            var mouseHelper = ModEntry.position_MouseOnScreen + new Vector2(Game1.viewport.X, Game1.viewport.Y);
+            var mouseBox = Util.toBoxPosition(Util.toTile(mouseHelper));
+            DrawHelper.drawCursorHelper(e.SpriteBatch, mouseBox);
 
             if (ModEntry.isMovingAutomaticaly && !ModEntry.isHoldingMove && !ModEntry.isBeingControl)
             {
@@ -215,7 +220,7 @@ namespace MouseMoveMode
                     if (ModEntry.pathFindingHelper.nextPath() is null && checkColidingIfMoving())
                     {
                         if (ModEntry.isActionableAtDesinationTile)
-                            TryToCheckGrapTile(ModEntry.grabTile);
+                            DecompiliedGame1.pressActionButtonMod(ModEntry.grabTile, forceNonDirectedTile: true);
                     }
                 }
             }
@@ -384,6 +389,14 @@ namespace MouseMoveMode
          */
         private bool handleWhenUsingWeapon(SButton button, MeleeWeapon weapon)
         {
+            // Check If player can't move
+            if (!(Context.IsPlayerFree && Game1.player.CanMove))
+            {
+                if (ModEntry.isDebugVerbose) this.Monitor.Log("Player isn't free or can't move");
+
+                return false;
+            }
+
             var canActiveSecialMove = true;
             canActiveSecialMove &= !weapon.Name.Contains("Scythe");
             canActiveSecialMove &= SpecialCooldown(weapon) <= 0;
@@ -728,8 +741,7 @@ namespace MouseMoveMode
             if (!isActionableAtDesinationTile)
                 return;
 
-            if (ModEntry.isDebugVerbose)
-                ModEntry.getMonitor().Log(String.Format("Trying to check grap tile {0}", grabTile), LogLevel.Info);
+            // if (ModEntry.isDebugVerbose) ModEntry.getMonitor().Log(String.Format("Trying to check grap tile {0}", grabTile), LogLevel.Info);
 
             // Auto dismount the player first if destination tile is actionable
             if (Game1.player.isRidingHorse())
@@ -791,7 +803,25 @@ namespace MouseMoveMode
                     }
                 }
 
-            var isChecked = Game1.player.currentLocation.checkAction(new xTile.Dimensions.Location((int)grabTile.X, (int)grabTile.Y), Game1.viewport, Game1.player);
+            var gl = Game1.player.currentLocation;
+            var funiture = gl.GetFurnitureAt(grabTile);
+            if (funiture is not null)
+            {
+                if (funiture.isActionable(Game1.player))
+                {
+                    var isFunitureChecked = funiture.checkForAction(Game1.player);
+                    if (isFunitureChecked)
+                    {
+                        if (ModEntry.isDebugVerbose)
+                            ModEntry.getMonitor().Log(String.Format("Success checked funiture at tile {0}", grabTile), LogLevel.Info);
+                        ModEntry.isActionableAtDesinationTile = false;
+                        ModEntry.isMovingAutomaticaly = false;
+                        return;
+                    }
+                }
+            }
+
+            var isChecked = !DecompiliedGame1.pressActionButtonMod(grabTile);
             if (isChecked)
             {
                 if (ModEntry.isDebugVerbose)
