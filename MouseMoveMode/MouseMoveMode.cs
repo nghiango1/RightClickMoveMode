@@ -103,9 +103,11 @@ namespace MouseMoveMode
 
             if (config.ShowMousePositionHint)
             {
-                var mouseHelper = ModEntry.position_MouseOnScreen + new Vector2(Game1.viewport.X, Game1.viewport.Y);
-                var mouseBox = Util.toBoxPosition(Util.toTile(mouseHelper));
-                DrawHelper.drawCursorHelper(e.SpriteBatch, mouseBox);
+                if ((Game1.activeClickableMenu == null) && (Game1.CurrentEvent == null)) {
+                    var mouseHelper = ModEntry.position_MouseOnScreen + new Vector2(Game1.viewport.X, Game1.viewport.Y);
+                    var mouseBox = Util.toBoxPosition(Util.toTile(mouseHelper));
+                    DrawHelper.drawCursorHelper(e.SpriteBatch, mouseBox);
+                }
             }
 
             if (ModEntry.isMovingAutomaticaly && !ModEntry.isHoldingMove && !ModEntry.isBeingControl)
@@ -223,8 +225,10 @@ namespace MouseMoveMode
                     // Or if the player is facing into it
                     if (ModEntry.pathFindingHelper.nextPath() is null && checkColidingIfMoving())
                     {
-                        if (ModEntry.isActionableAtDesinationTile)
+                        if (ModEntry.isActionableAtDesinationTile) {
                             DecompiliedGame1.pressActionButtonMod(ModEntry.grabTile, forceNonDirectedTile: true);
+                            ModEntry.isActionableAtDesinationTile = false;
+                        }
                     }
                 }
             }
