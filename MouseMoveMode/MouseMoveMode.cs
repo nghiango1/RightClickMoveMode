@@ -254,7 +254,7 @@ namespace MouseMoveMode
 
         private int SpecialCooldown(MeleeWeapon currentWeapon)
         {
-            switch (currentWeapon.type)
+            switch (currentWeapon.type.Value)
             {
                 case MeleeWeapon.defenseSword:
                     return MeleeWeapon.defenseCooldown;
