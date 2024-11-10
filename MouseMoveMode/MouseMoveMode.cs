@@ -27,7 +27,7 @@ namespace MouseMoveMode
         public float MouseWhellingMaxZoom = Options.maxZoom;
         public float MouseWhellingMinZoom = Options.minZoom;
         public KeybindList FullScreenKeybindShortcut { get; set; } = KeybindList.Parse("RightAlt + Enter");
-        public bool EnablePathFinding { get; set; } = false;
+        public bool EnablePathFinding { get; set; } = true;
         public int PathFindLimit { get; set; } = 500;
         public bool ShowMousePositionHint { get; set; } = false;
     }
