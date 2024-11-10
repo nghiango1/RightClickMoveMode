@@ -1,4 +1,5 @@
 ﻿using System;
+using GenericModConfigMenu;
 using HarmonyLib;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
@@ -16,6 +17,7 @@ namespace MouseMoveMode
     {
         public bool RightClickMoveModeDefault { get; set; } = true;
         public KeybindList RightClickMoveModeToggleButton { get; set; } = KeybindList.Parse("F6");
+        public KeybindList PathFindingToggleButton { get; set; } = KeybindList.Parse("F7");
         public KeybindList ForceMoveButton { get; set; } = KeybindList.Parse("Space");
         public int HoldTickCount { get; set; } = 15;
         public bool HoldingMoveOnly { get; set; } = false;
@@ -25,6 +27,7 @@ namespace MouseMoveMode
         public float MouseWhellingMaxZoom = Options.maxZoom;
         public float MouseWhellingMinZoom = Options.minZoom;
         public KeybindList FullScreenKeybindShortcut { get; set; } = KeybindList.Parse("RightAlt + Enter");
+        public bool EnablePathFinding { get; set; } = false;
         public int PathFindLimit { get; set; } = 500;
         public bool ShowMousePositionHint { get; set; } = false;
     }
@@ -73,6 +76,7 @@ namespace MouseMoveMode
         public override void Entry(IModHelper helper)
         {
             Helper.Events.Input.ButtonPressed += this.ButtonPressedMods;
+            Helper.Events.Input.ButtonPressed += this.TogglePathFinding;
             Helper.Events.Input.ButtonPressed += this.ExtendedButtonPressedMods;
             Helper.Events.Input.CursorMoved += this.CursorMovedMods;
             Helper.Events.Input.MouseWheelScrolled += this.MouseWheelScrolled;
@@ -80,12 +84,70 @@ namespace MouseMoveMode
             Helper.Events.GameLoop.UpdateTicked += this.UpdateTickMods;
             Helper.Events.Player.Warped += this.WarpedMods;
             Helper.Events.Display.Rendered += this.RenderedEvents;
+            Helper.Events.GameLoop.GameLaunched += this.OnGameLaunched;
 
             StartPatching();
             ModEntry.monitor = this.Monitor;
             pathFindingHelper = new PathFindingHelper();
 
             ModEntry.config = this.Helper.ReadConfig<ModConfig>();
+        }
+
+        private void OnGameLaunched(object sender, GameLaunchedEventArgs e)
+        {
+            // get Generic Mod Config Menu's API (if it's installed)
+            var configMenu = this.Helper.ModRegistry.GetApi<IGenericModConfigMenuApi>("spacechase0.GenericModConfigMenu");
+            if (configMenu is null)
+                return;
+
+            // register mod
+            configMenu.Register(
+                mod: this.ModManifest,
+                reset: () => ModEntry.config = new ModConfig(),
+                save: () => this.Helper.WriteConfig(ModEntry.config)
+            );
+
+            configMenu.AddBoolOption(
+                mod: this.ModManifest,
+                name: () => "Enable Path Finding",
+                tooltip: () => "Use latest functional for more acuracy control player to the pointed destination location",
+                getValue: () => ModEntry.config.EnablePathFinding,
+                setValue: value => ModEntry.config.EnablePathFinding = value
+            );
+
+            configMenu.AddBoolOption(
+                mod: this.ModManifest,
+                name: () => "Enable Path Finding indicator",
+                tooltip: () => "Show path that player are moving into",
+                getValue: () => ModEntry.config.ShowMousePositionHint,
+                setValue: value => ModEntry.config.ShowMousePositionHint = value
+            );
+
+            configMenu.AddNumberOption(
+                mod: this.ModManifest,
+                name: () => "Path Finding limit",
+                tooltip: () => "Total of game title will be search through to find the path",
+                getValue: () => ModEntry.config.PathFindLimit,
+                setValue: value => ModEntry.config.PathFindLimit = value,
+                min: 1,
+                max: 800
+            );
+
+            configMenu.AddKeybindList(
+                mod: this.ModManifest,
+                name: () => "Path Finding toggle button",
+                tooltip: () => "Quickly toggle enable and disable Path finding function ingame",
+                getValue: () => ModEntry.config.PathFindingToggleButton,
+                setValue: value => ModEntry.config.PathFindingToggleButton = value
+            );
+            configMenu.AddNumberOption(
+                mod: this.ModManifest,
+                name: () => "Weapons Spectical Interaction Type",
+                getValue: () => ModEntry.config.WeaponsSpecticalInteractionType,
+                setValue: value => ModEntry.config.WeaponsSpecticalInteractionType = value,
+                min: 0,
+                max: 3
+            );
         }
 
         public static IMonitor getMonitor()
@@ -484,6 +546,24 @@ namespace MouseMoveMode
             }
 
             return false;
+        }
+
+        /**
+         * @brief there is only one button being handle here, by passing it over
+         * multiple function, which return if we properly handle it? if it true
+         * then we can stop at that point
+         */
+        private void TogglePathFinding(object sender, ButtonPressedEventArgs e)
+        {
+            if (!Context.IsWorldReady)
+                return;
+
+            if (config.PathFindingToggleButton.JustPressed())
+            {
+                if (ModEntry.isDebugVerbose) this.Monitor.Log("Path Findding toggle!");
+
+                config.EnablePathFinding = !config.EnablePathFinding;
+            }
         }
 
         /**

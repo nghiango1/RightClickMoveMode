@@ -72,6 +72,7 @@ namespace MouseMoveMode
         public PathFindingHelper()
         {
             this.Monitor = ModEntry.getMonitor();
+            this.lineToTileNodes = new List<DrawableNode>();
 
             // Only show when debuging
             if (this.usePathSmothing)
@@ -79,9 +80,6 @@ namespace MouseMoveMode
                 if (this.debugPathSmothing)
                     this.smothPathNodes = new List<DrawableNode>();
             }
-
-            if (this.debugLineToTiles)
-                this.lineToTileNodes = new List<DrawableNode>();
         }
 
         /**
@@ -114,6 +112,24 @@ namespace MouseMoveMode
                 }
                 this.lineToTileNodes.Add(node);
             }
+        }
+
+        public void tryDirectMove(Vector2 start, Vector2 destination, bool flushAllDrawedNode = true)
+        {
+            if (this.debugVerbose)
+            {
+                this.Monitor.Log(String.Format("Try direct movement from tile {0} to {1}", start, destination), LogLevel.Info);
+            }
+
+            List<Vector2> line = lineToTiles(Util.toTile(start), Util.toTile(destination));
+            List<Vector2> path = new List<Vector2>();
+
+            for (var i = 0; i < line.Count; i += 1)
+            {
+                path.Add(Util.toPosition(line[i]));
+            }
+
+            updatePath(path);
         }
 
         public void drawVisitedNodes(SpriteBatch b)
@@ -195,8 +211,10 @@ namespace MouseMoveMode
             Util.flushCache();
             targetNode = new DrawableNode(Util.toBoxPosition(destination));
             currentStep = 0;
-            aStarPathFinding(destination);
-
+            if (ModEntry.config.EnablePathFinding)
+                aStarPathFinding(destination);
+            else
+                tryDirectMove(Util.toPosition(Game1.player.Tile), destination);
         }
 
         /**
@@ -345,7 +363,7 @@ namespace MouseMoveMode
                     this.destinationTile = current;
                     if (this.debugVerbose)
                         this.Monitor.Log("Found path!", LogLevel.Info);
-                    updatePath();
+                    updatePath(tracebackAndUpscalePath());
                     return;
                 }
 
@@ -417,7 +435,7 @@ namespace MouseMoveMode
                         if (!Util.isTilePassable(this.destinationTile) && bestScore < 80f)
                         {
                             this.destinationTile = bestScoreTile;
-                            updatePath();
+                            updatePath(tracebackAndUpscalePath());
                             return;
                         }
                     }
@@ -434,7 +452,7 @@ namespace MouseMoveMode
                             if (!Util.isTilePassable(this.destinationTile + new Vector2(0, 1)) && !Util.isTilePassable(this.destinationTile) && bestScore < 80f)
                             {
                                 this.destinationTile = bestScoreTile;
-                                updatePath();
+                                updatePath(tracebackAndUpscalePath());
                                 return;
                             }
                         }
@@ -447,7 +465,7 @@ namespace MouseMoveMode
             if (this.debugVerbose)
                 this.Monitor.Log("Can't found path within time!, change to closest tile found" + bestScoreTile, LogLevel.Info);
             this.destinationTile = bestScoreTile;
-            updatePath();
+            updatePath(tracebackAndUpscalePath());
         }
 
         /**
@@ -528,10 +546,8 @@ namespace MouseMoveMode
             return temp;
         }
 
-        public void updatePath()
+        public void updatePath(List<Vector2> path)
         {
-            var path = tracebackAndUpscalePath();
-
             if (usePathSmothing)
             {
                 // Add back the missing node
@@ -665,6 +681,8 @@ namespace MouseMoveMode
                         lineTilesX.Add(new Vector2(xAxis, yAxis));
                     i += stepX;
                 }
+                // Last member at final destination
+                lineTilesX.Add(new Vector2(i, line * i + constant));
             }
 
             var lineTilesY = new List<Vector2>();
@@ -682,6 +700,8 @@ namespace MouseMoveMode
                         lineTilesY.Add(new Vector2(xAxis, yAxis));
                     j += stepY;
                 }
+                // Last member at final destination
+                lineTilesY.Add(new Vector2(line * j + constant, j));
             }
 
             // Seeing who do the job better, which just mean there is more node
