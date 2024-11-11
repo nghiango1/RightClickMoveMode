@@ -46,6 +46,7 @@ namespace MouseMoveMode
 
         public static bool isBestScoreFront { get; private set; }
         public Vector2 bestNext { get; private set; }
+        public Vector2 originalDestination { get; private set; }
 
         public void flushCache()
         {
@@ -206,6 +207,7 @@ namespace MouseMoveMode
             {
                 this.Monitor.Log(String.Format("Change destination from {0} to {1}, tile value {2} to {3}", this.destination, destination, Util.toTile(this.destination), Util.toTile(destination)), LogLevel.Info);
             }
+            this.originalDestination = destination;
 
             this.flushCache();
             Util.flushCache();
