@@ -122,12 +122,12 @@ namespace MouseMoveMode
                 tooltip: () => "Total of game title will be search through to find the path",
                 getValue: () => ModEntry.config.PathFindLimit,
                 setValue: value => ModEntry.config.PathFindLimit = value,
-                min: 1,
+                min: 200,
                 max: 800
             );
 
             string[] allows = new string[4];
-            allows[0] = "Disable special handling ()";
+            allows[0] = "No special handling";
             allows[1] = "Can be used freely";
             allows[2] = "Left click on player";
             allows[3] = "Use Middle or X1 mouse button";
@@ -145,6 +145,47 @@ namespace MouseMoveMode
                     }
                 },
                 allowedValues: allows
+            );
+
+
+            configMenu.AddBoolOption(
+                mod: this.ModManifest,
+                name: () => "Holding move only",
+                tooltip: () => "Only allow holding to move",
+                getValue: () => ModEntry.config.HoldingMoveOnly,
+                setValue: value => ModEntry.config.HoldingMoveOnly = value
+            );
+
+            configMenu.AddKeybindList(
+                mod: this.ModManifest,
+                name: () => "Force move",
+                tooltip: () => "Holding force move button will prevent any right click action, force player to move only",
+                getValue: () => ModEntry.config.ForceMoveButton,
+                setValue: value => ModEntry.config.ForceMoveButton = value
+            );
+
+            configMenu.AddKeybindList(
+                mod: this.ModManifest,
+                name: () => "Full screen toggle",
+                tooltip: () => "Extra function - Hotkey to full screen the game",
+                getValue: () => ModEntry.config.FullScreenKeybindShortcut,
+                setValue: value => ModEntry.config.FullScreenKeybindShortcut = value
+            );
+
+            configMenu.AddNumberOption(
+                mod: this.ModManifest,
+                name: () => "Max zoom",
+                tooltip: () => "Extra function - Ctrl + Mouse welling to zoom maximum capacity",
+                getValue: () => ModEntry.config.MouseWhellingMaxZoom,
+                setValue: value => ModEntry.config.MouseWhellingMaxZoom = value
+            );
+
+            configMenu.AddNumberOption(
+                mod: this.ModManifest,
+                name: () => "Min zoom",
+                tooltip: () => "Extra function - Ctrl + Mouse welling to zoom minimum capacity",
+                getValue: () => ModEntry.config.MouseWhellingMinZoom,
+                setValue: value => ModEntry.config.MouseWhellingMinZoom = value
             );
         }
 
