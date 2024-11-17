@@ -16,7 +16,6 @@ namespace MouseMoveMode
     {
         public bool RightClickMoveModeDefault { get; set; } = true;
         public KeybindList RightClickMoveModeToggleButton { get; set; } = KeybindList.Parse("F6");
-        public KeybindList DebugActionHandler { get; set; } = KeybindList.Parse("F7");
         public KeybindList ForceMoveButton { get; set; } = KeybindList.Parse("Space");
         public int HoldTickCount { get; set; } = 15;
         public bool HoldingMoveOnly { get; set; } = false;
@@ -60,7 +59,7 @@ namespace MouseMoveMode
 
         private static PathFindingHelper pathFindingHelper;
 
-        public static bool isDebugVerbose = true;
+        public static bool isDebugVerbose = false;
 
         /*********
         ** Public methods
@@ -125,14 +124,6 @@ namespace MouseMoveMode
                 setValue: value => ModEntry.config.PathFindLimit = value,
                 min: 1,
                 max: 800
-            );
-
-            configMenu.AddKeybindList(
-                mod: this.ModManifest,
-                name: () => "Do action",
-                tooltip: () => "Try to do action at the current pointed location",
-                getValue: () => ModEntry.config.DebugActionHandler,
-                setValue: value => ModEntry.config.DebugActionHandler = value
             );
 
             string[] allows = new string[4];
@@ -271,12 +262,13 @@ namespace MouseMoveMode
 
             if (ModEntry.isHoldingMove)
             {
-                this.Monitor.Log("cancelAction");
+                if (ModEntry.isDebugVerbose) this.Monitor.Log("cancelAction");
                 actionHandler.cancelAction();
             }
             else
             {
-                if (actionHandler.tryDoAction()) {
+                if (actionHandler.tryDoAction())
+                {
                     ModEntry.isMovingAutomaticaly = false;
                 }
             }
@@ -355,7 +347,7 @@ namespace MouseMoveMode
             if (config.ForceMoveButton.IsDown())
             {
                 if (ModEntry.isDebugVerbose)
-                    this.Monitor.Log("We only moving now, no more fancy interaction", LogLevel.Info);
+                    this.Monitor.Log("We only moving now, no more fancy interaction", LogLevel.Trace);
 
                 Helper.Input.Suppress(button);
             }
@@ -364,7 +356,7 @@ namespace MouseMoveMode
             if (config.HoldingMoveOnly)
             {
                 if (ModEntry.isDebugVerbose)
-                    this.Monitor.Log("We only holding moving now, no need for complicated code", LogLevel.Info);
+                    this.Monitor.Log("We only holding moving now, no need for complicated code", LogLevel.Trace);
 
                 return;
             }
@@ -379,7 +371,7 @@ namespace MouseMoveMode
             ModEntry.pointedNPC = Game1.player.currentLocation.isCharacterAtTile(desitinationTile);
             if (ModEntry.isDebugVerbose)
                 if (pointedNPC is not null)
-                    this.Monitor.Log(String.Format("Found NPC {0} at destination {1}", pointedNPC, position_Destination), LogLevel.Info);
+                    this.Monitor.Log(String.Format("Found NPC {0} at destination {1}", pointedNPC, position_Destination), LogLevel.Trace);
         }
 
         /**
@@ -477,21 +469,22 @@ namespace MouseMoveMode
         }
 
         /**
-         * @brief there is only one button being handle here, by passing it over
-         * multiple function, which return if we properly handle it? if it true
-         * then we can stop at that point
+         * @brief Use F7 to test the action handler
          */
         private void DebugActionHandler(object sender, ButtonPressedEventArgs e)
         {
             if (!Context.IsWorldReady)
                 return;
 
-            if (config.DebugActionHandler.JustPressed())
+            if (isDebugVerbose)
             {
-                var target = new Vector2(Game1.viewport.X, Game1.viewport.Y) + position_MouseOnScreen;
-                if (ModEntry.isDebugVerbose)
-                    this.Monitor.Log(String.Format("Force do action at {0}", Util.toTile(target)));
-                this.actionHandler.debugDoAction(target);
+                if (e.Button.CompareTo(SButton.F7) == 0)
+                {
+                    var target = new Vector2(Game1.viewport.X, Game1.viewport.Y) + position_MouseOnScreen;
+                    if (ModEntry.isDebugVerbose)
+                        this.Monitor.Log(String.Format("Force do action at {0}", Util.toTile(target)));
+                    this.actionHandler.debugDoAction(target);
+                }
             }
         }
 
@@ -563,7 +556,7 @@ namespace MouseMoveMode
                 if (!isMouseWithinRadiusOfPlayer)
                 {
                     if (ModEntry.isDebugVerbose)
-                        this.Monitor.Log(String.Format("Mouse target is outside hitbox range, at {0} and have {1} distance from player", position_Destination, vector_PlayerToMouse.Length()), LogLevel.Info);
+                        this.Monitor.Log(String.Format("Mouse target is outside hitbox range, at {0} and have {1} distance from player", position_Destination, vector_PlayerToMouse.Length()), LogLevel.Trace);
 
                     this.Monitor.Log("updateTarget");
                     this.actionHandler.updateTarget(ModEntry.position_Destination);
@@ -674,7 +667,7 @@ namespace MouseMoveMode
                 {
                     if (ModEntry.isDebugVerbose)
                     {
-                        ModEntry.getMonitor().Log("Mouse too close, holding move stopped", LogLevel.Info);
+                        ModEntry.getMonitor().Log("Mouse too close, holding move stopped", LogLevel.Trace);
                     }
                     ModEntry.isMovingAutomaticaly = false;
                     return;
@@ -698,7 +691,7 @@ namespace MouseMoveMode
             // We following the path finding result
             if (ModEntry.isDebugVerbose)
             {
-                //ModEntry.getMonitor().Log(String.Format("Follow path finding to {0} with direction {1}", pathFindingHelper.nextPath(), pathFindingHelper.moveDirection()), LogLevel.Info);
+                //ModEntry.getMonitor().Log(String.Format("Follow path finding to {0} with direction {1}", pathFindingHelper.nextPath(), pathFindingHelper.moveDirection()), LogLevel.Trace);
             }
 
             vector_AutoMove = pathFindingHelper.moveDirection();

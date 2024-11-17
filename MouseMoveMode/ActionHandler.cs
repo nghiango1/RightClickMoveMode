@@ -58,7 +58,7 @@ namespace MouseMoveMode
             // Maybe we need dismount right
             if (Game1.player.isRidingHorse())
             {
-                ModEntry.getMonitor().Log(String.Format("Try do as riding horse", Util.toTile(target)), LogLevel.Info);
+                ModEntry.getMonitor().VerboseLog(String.Format("Try do as riding horse", Util.toTile(target)));
                 if (Utility.tileWithinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 2, Game1.player))
                     Game1.player.mount.dismount();
             }
@@ -66,7 +66,7 @@ namespace MouseMoveMode
             // Try to check grap tile when player is close enough
             if (Utility.tileWithinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 1, Game1.player))
             {
-                ModEntry.getMonitor().Log(String.Format("Try do as within range", Util.toTile(target)), LogLevel.Info);
+                ModEntry.getMonitor().VerboseLog(String.Format("Try do as within range", Util.toTile(target)));
                 TryToCheckGrapTile();
             }
 
@@ -144,23 +144,47 @@ namespace MouseMoveMode
 
     class ActionHandlerOld : IActionHandler
     {
+        public bool isVerbose = false;
         public Vector2 target;
         public NPC targetNPC = null;
         public int actionToolIndex = -1;
         public StardewValley.Object targetObject = null;
+        StardewValley.Buildings.Building targetBuilding = null;
+        StardewValley.Buildings.ShippingBin targetShippingBin = null;
+        StardewValley.TerrainFeatures.TerrainFeature targetTerrainFeatures = null;
+        StardewValley.TerrainFeatures.LargeTerrainFeature targetLargeTerrainFeatures = null;
         public int isTryToDoActionAtClickedTitle = 0;
 
-        public ActionHandlerOld()
+        public ActionHandlerOld(bool isVerbose = false)
         {
+            this.isVerbose = isVerbose;
         }
 
         public void debugDoAction(Vector2 target)
         {
             updateTarget(target);
-            ModEntry.getMonitor().Log(String.Format("Try do action at tile {0}", Util.toTile(target)), LogLevel.Info);
-            ModEntry.getMonitor().Log(String.Format("Full context: {0}", this.toString()), LogLevel.Trace);
+            if (this.isVerbose)
+            {
+                ModEntry.getMonitor().Log(String.Format("Try do action at tile {0}, full context: {1}", Util.toTile(target), this.toString()), LogLevel.Trace);
+            }
             tryDoAction();
             cancelAction();
+        }
+
+        private void shipItem(Item i, Farmer who)
+        {
+            if (i != null)
+            {
+                who.removeItemFromInventory(i);
+                Game1.getFarm().getShippingBin(who).Add(i);
+                this.targetShippingBin.showShipment(i, playThrowSound: false);
+                Game1.getFarm().lastItemShipped = i;
+                if (Game1.player.ActiveItem == null)
+                {
+                    Game1.player.showNotCarrying();
+                    Game1.player.Halt();
+                }
+            }
         }
 
         public bool tryDoAction()
@@ -188,7 +212,8 @@ namespace MouseMoveMode
             {
                 if (this.targetObject.checkForAction(Game1.player))
                 {
-                    ModEntry.getMonitor().Log(String.Format("Check object directly instead {0}", targetObject.TileLocation));
+                    if (this.isVerbose)
+                        ModEntry.getMonitor().Log(String.Format("Check object directly instead {0}", targetObject.TileLocation));
                     isTryToDoActionAtClickedTitle = 0;
                     //isMovingAutomaticaly = false;
                     return true;
@@ -197,7 +222,8 @@ namespace MouseMoveMode
                 {
                     if (this.targetObject.name == "Chest")
                     {
-                        ModEntry.getMonitor().Log(String.Format("Got Chest type at {0}, we do special handling", targetObject.TileLocation));
+                        if (this.isVerbose)
+                            ModEntry.getMonitor().Log(String.Format("Got Chest type at {0}, we do special handling", targetObject.TileLocation));
                         StardewValley.Objects.Chest chest = (StardewValley.Objects.Chest)this.targetObject;
                         if (chest.playerChest.Value)
                         {
@@ -251,17 +277,66 @@ namespace MouseMoveMode
                 }
             }
 
-            if (isTryToDoActionAtClickedTitle == 4 && Utility.tileWithinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 1, Game1.player))
+            if (isTryToDoActionAtClickedTitle == 4 && Utility.tileWithinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 1, Game1.player) && targetTerrainFeatures != null && targetTerrainFeatures.performUseAction(grabTile))
             {
                 isTryToDoActionAtClickedTitle = 0;
-                return Game1.tryToCheckAt(grabTile, Game1.player);
+                return true;
+            }
+
+            if (isTryToDoActionAtClickedTitle == 4 && Utility.tileWithinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 1, Game1.player) && targetLargeTerrainFeatures != null && targetLargeTerrainFeatures.performUseAction(grabTile))
+            {
+                isTryToDoActionAtClickedTitle = 0;
+                return true;
+            }
+
+            if (isTryToDoActionAtClickedTitle == 4 && Utility.tileWithinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 1, Game1.player) && targetBuilding != null)
+            {
+                if (targetBuilding.doAction(grabTile, Game1.player))
+                {
+                    isTryToDoActionAtClickedTitle = 0;
+                    return true;
+                }
+
+                // Again special handling for ShippingBin
+                if (targetBuilding is StardewValley.Buildings.ShippingBin)
+                {
+                    targetShippingBin = (StardewValley.Buildings.ShippingBin)targetBuilding;
+                    StardewValley.Buildings.ShippingBin bin = (StardewValley.Buildings.ShippingBin)targetBuilding;
+                    StardewValley.Menus.ItemGrabMenu itemGrabMenu = new StardewValley.Menus.ItemGrabMenu(null, reverseGrab: true, showReceivingMenu: false, Utility.highlightShippableObjects, shipItem, "", null, snapToBottom: true, canBeExitedWithKey: true, playRightClickSound: false, allowRightClick: true, showOrganizeButton: false, 0, null, -1, this);
+                    itemGrabMenu.initializeUpperRightCloseButton();
+                    itemGrabMenu.setBackgroundTransparency(b: false);
+                    itemGrabMenu.setDestroyItemOnClick(b: true);
+                    itemGrabMenu.initializeShippingBin();
+                    Game1.activeClickableMenu = itemGrabMenu;
+                    if (Game1.player.IsLocalPlayer)
+                    {
+                        Game1.playSound("shwip");
+                    }
+                    if (Game1.player.FacingDirection == 1)
+                    {
+                        Game1.player.Halt();
+                    }
+                    Game1.player.showCarrying();
+                    isTryToDoActionAtClickedTitle = 0;
+                    return true;
+                }
+            }
+
+            if (isTryToDoActionAtClickedTitle == 4 && Utility.tileWithinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 1, Game1.player) && Game1.tryToCheckAt(grabTile, Game1.player))
+            {
+                if (this.isVerbose)
+                    ModEntry.getMonitor().Log(String.Format("Just checked at {0}", grabTile), LogLevel.Trace);
+                isTryToDoActionAtClickedTitle = 0;
+                return true;
             }
 
             if (isTryToDoActionAtClickedTitle == 5 && Utility.tileWithinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 1, Game1.player))
             {
-                isTryToDoActionAtClickedTitle = 0;
-                if (!Game1.player.isRidingHorse())
-                    return Game1.tryToCheckAt(grabTile, Game1.player);
+                if (!Game1.player.isRidingHorse() && Game1.tryToCheckAt(grabTile, Game1.player))
+                {
+                    isTryToDoActionAtClickedTitle = 0;
+                    return true;
+                }
             }
 
             return false;
@@ -286,8 +361,12 @@ namespace MouseMoveMode
             {
                 pointedObject = Game1.player.currentLocation.Objects[grabTile];
             }
+
             targetNPC = null;
             targetObject = null;
+            targetBuilding = null;
+            targetTerrainFeatures = null;
+            targetShippingBin = null;
             actionToolIndex = -1;
 
             // 1 is for Object is 1x1 tile size but with 2x1 hit box (Chess, ...)
@@ -335,7 +414,17 @@ namespace MouseMoveMode
                     if ((v.Value is Grass) || (v.Value is HoeDirt dirt && !dirt.readyForHarvest()))
                     { }
                     else
+                    {
+                        targetTerrainFeatures = v.Value;
                         return 4;
+                    }
+
+                    // Anything actionable really
+                    if (v.Value.isActionable())
+                    {
+                        targetTerrainFeatures = v.Value;
+                        return 4;
+                    }
                 }
             }
 
@@ -345,26 +434,39 @@ namespace MouseMoveMode
                 {
                     if (f.getBoundingBox().Intersects(new Rectangle((int)grabTile.X * 64, (int)grabTile.Y * 64, 64, 64)))
                     {
+                        targetLargeTerrainFeatures = f;
                         return 4;
                     }
                 }
             }
 
-            if (Game1.isActionAtCurrentCursorTile || Game1.isInspectionAtCurrentCursorTile)
+            // 4 - extend with building actionable tiles building even
+            var l = Game1.player.currentLocation;
+            var building = l.getBuildingAt(grabTile);
+            if (building is not null && building.isActionableTile((int)grabTile.X, (int)grabTile.Y, Game1.player))
             {
-                if (!Game1.currentLocation.isActionableTile((int)grabTile.X, (int)grabTile.Y, Game1.player))
-                    if (Game1.currentLocation.isActionableTile((int)grabTile.X, (int)grabTile.Y + 1, Game1.player))
-                        grabTile.Y += 1;
-                return 1;
+                this.targetBuilding = building;
+                return 4;
             }
 
-            // 5 is Unknown, try to grap at pointed place 
-            return 5;
+            // 4 - Seem like shipping bin isn't actionable, this directly handle it
+            if (building is StardewValley.Buildings.ShippingBin)
+            {
+                this.targetBuilding = building;
+                return 4;
+            }
+
+            if (Game1.currentLocation.isActionableTile((int)grabTile.X, (int)grabTile.Y, Game1.player))
+            {
+                return 4;
+            }
+
+            return 0;
         }
 
         public string toString()
         {
-            return String.Format("targetObject:{0}, target:{1}, isTryToDoActionAtClickedTitle:{2}, targetNPC:{3}, actionToolIndex:{4}", this.targetObject, this.target, this.isTryToDoActionAtClickedTitle, this.targetNPC, this.actionToolIndex);
+            return String.Format("targetObject:{0}, target:{1}, isTryToDoActionAtClickedTitle:{2}, targetNPC:{3}, actionToolIndex:{4}, targetBuilding:{5}, targetTerrainFeatures:{6}, targetLargeTerrainFeatures:{7}", this.targetObject, this.target, this.isTryToDoActionAtClickedTitle, this.targetNPC, this.actionToolIndex, this.targetBuilding, this.targetTerrainFeatures, this.targetLargeTerrainFeatures);
         }
     }
 }
