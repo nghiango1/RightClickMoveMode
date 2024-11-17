@@ -16,7 +16,7 @@ namespace MouseMoveMode
     {
         public bool RightClickMoveModeDefault { get; set; } = true;
         public KeybindList RightClickMoveModeToggleButton { get; set; } = KeybindList.Parse("F6");
-        public KeybindList PathFindingToggleButton { get; set; } = KeybindList.Parse("F7");
+        public KeybindList DebugActionHandler { get; set; } = KeybindList.Parse("F7");
         public KeybindList ForceMoveButton { get; set; } = KeybindList.Parse("Space");
         public int HoldTickCount { get; set; } = 15;
         public bool HoldingMoveOnly { get; set; } = false;
@@ -47,7 +47,7 @@ namespace MouseMoveMode
         public static bool isHoldingRunButton = false;
 
         public static NPC pointedNPC = null;
-        public ActionHandlerOld actionHandler = new ActionHandlerOld();
+        public IActionHandler actionHandler = new ActionHandlerOld();
 
         private static Vector2 vector_PlayerToMouse;
         private static Vector2 vector_AutoMove;
@@ -60,7 +60,7 @@ namespace MouseMoveMode
 
         private static PathFindingHelper pathFindingHelper;
 
-        public static bool isDebugVerbose = false;
+        public static bool isDebugVerbose = true;
 
         /*********
         ** Public methods
@@ -70,7 +70,7 @@ namespace MouseMoveMode
         public override void Entry(IModHelper helper)
         {
             Helper.Events.Input.ButtonPressed += this.ButtonPressedMods;
-            Helper.Events.Input.ButtonPressed += this.TogglePathFinding;
+            Helper.Events.Input.ButtonPressed += this.DebugActionHandler;
             Helper.Events.Input.ButtonPressed += this.ExtendedButtonPressedMods;
             Helper.Events.Input.CursorMoved += this.CursorMovedMods;
             Helper.Events.Input.MouseWheelScrolled += this.MouseWheelScrolled;
@@ -103,23 +103,23 @@ namespace MouseMoveMode
 
             configMenu.AddBoolOption(
                 mod: this.ModManifest,
-                name: () => "Enable Path Finding",
-                tooltip: () => "Use latest functional for more acuracy control player to the pointed destination location",
+                name: () => "Path finding",
+                tooltip: () => "Enable to Use latest functional for more acuracy control player to the pointed destination location",
                 getValue: () => ModEntry.config.EnablePathFinding,
                 setValue: value => ModEntry.config.EnablePathFinding = value
             );
 
             configMenu.AddBoolOption(
                 mod: this.ModManifest,
-                name: () => "Enable Path Finding indicator",
-                tooltip: () => "Show path that player are moving into",
+                name: () => "Path indicator",
+                tooltip: () => "Enable to Show path that player are moving",
                 getValue: () => ModEntry.config.ShowMousePositionHint,
                 setValue: value => ModEntry.config.ShowMousePositionHint = value
             );
 
             configMenu.AddNumberOption(
                 mod: this.ModManifest,
-                name: () => "Path Finding limit",
+                name: () => "Finding limit",
                 tooltip: () => "Total of game title will be search through to find the path",
                 getValue: () => ModEntry.config.PathFindLimit,
                 setValue: value => ModEntry.config.PathFindLimit = value,
@@ -129,18 +129,31 @@ namespace MouseMoveMode
 
             configMenu.AddKeybindList(
                 mod: this.ModManifest,
-                name: () => "Path Finding toggle button",
-                tooltip: () => "Quickly toggle enable and disable Path finding function ingame",
-                getValue: () => ModEntry.config.PathFindingToggleButton,
-                setValue: value => ModEntry.config.PathFindingToggleButton = value
+                name: () => "Do action",
+                tooltip: () => "Try to do action at the current pointed location",
+                getValue: () => ModEntry.config.DebugActionHandler,
+                setValue: value => ModEntry.config.DebugActionHandler = value
             );
-            configMenu.AddNumberOption(
+
+            string[] allows = new string[4];
+            allows[0] = "Disable special handling ()";
+            allows[1] = "Can be used freely";
+            allows[2] = "Left click on player";
+            allows[3] = "Use Middle or X1 mouse button";
+            configMenu.AddTextOption(
                 mod: this.ModManifest,
-                name: () => "Weapons Spectical Interaction Type",
-                getValue: () => ModEntry.config.WeaponsSpecticalInteractionType,
-                setValue: value => ModEntry.config.WeaponsSpecticalInteractionType = value,
-                min: 0,
-                max: 3
+                name: () => "Weapon special attack",
+                tooltip: () => "By default right-click is disable so any player action won't interupt movement. This allow how you want to overide default handling to perform weapon special actack",
+                getValue: () => allows[ModEntry.config.WeaponsSpecticalInteractionType],
+                setValue: value =>
+                {
+                    for (int i = 0; i < allows.Length; i++)
+                    {
+                        if (allows[i] == value)
+                            ModEntry.config.WeaponsSpecticalInteractionType = i;
+                    }
+                },
+                allowedValues: allows
             );
         }
 
@@ -263,12 +276,9 @@ namespace MouseMoveMode
             }
             else
             {
-                var grabTile = Util.toTile(actionHandler.target);
-                if (actionHandler.isTryToDoActionAtClickedTitle != 0 && Utility.tileWithinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 2, Game1.player))
-                {
-                    this.Monitor.Log(String.Format("TryDoAction: isTryToDoActionAtClickedTitle = {0}, actionHandler.target = {1}, actionHandler.targetNPC = {2}, actionHandler.targetObject = {3}", actionHandler.isTryToDoActionAtClickedTitle, actionHandler.target, actionHandler.targetNPC, actionHandler.targetObject));
+                if (actionHandler.tryDoAction()) {
+                    ModEntry.isMovingAutomaticaly = false;
                 }
-                actionHandler.tryDoAction();
             }
         }
 
@@ -471,16 +481,17 @@ namespace MouseMoveMode
          * multiple function, which return if we properly handle it? if it true
          * then we can stop at that point
          */
-        private void TogglePathFinding(object sender, ButtonPressedEventArgs e)
+        private void DebugActionHandler(object sender, ButtonPressedEventArgs e)
         {
             if (!Context.IsWorldReady)
                 return;
 
-            if (config.PathFindingToggleButton.JustPressed())
+            if (config.DebugActionHandler.JustPressed())
             {
-                if (ModEntry.isDebugVerbose) this.Monitor.Log("Path Findding toggle!");
-
-                config.EnablePathFinding = !config.EnablePathFinding;
+                var target = new Vector2(Game1.viewport.X, Game1.viewport.Y) + position_MouseOnScreen;
+                if (ModEntry.isDebugVerbose)
+                    this.Monitor.Log(String.Format("Force do action at {0}", Util.toTile(target)));
+                this.actionHandler.debugDoAction(target);
             }
         }
 
