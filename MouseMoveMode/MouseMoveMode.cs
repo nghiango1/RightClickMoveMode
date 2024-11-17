@@ -558,7 +558,8 @@ namespace MouseMoveMode
                     if (ModEntry.isDebugVerbose)
                         this.Monitor.Log(String.Format("Mouse target is outside hitbox range, at {0} and have {1} distance from player", position_Destination, vector_PlayerToMouse.Length()), LogLevel.Trace);
 
-                    this.Monitor.Log("updateTarget");
+                    if (ModEntry.isDebugVerbose)
+                        this.Monitor.Log("updateTarget for action handler", LogLevel.Trace);
                     this.actionHandler.updateTarget(ModEntry.position_Destination);
                     // We first will suppress that be havior by disable the right-click
                     // input
