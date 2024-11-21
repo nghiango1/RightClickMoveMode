@@ -588,23 +588,23 @@ namespace MouseMoveMode
                     ModEntry.isMovingAutomaticaly = true;
                     ModEntry.isBeingControl = false;
                     handleRightClickToMove(e.Button);
-                }
 
-                // We also let the game to handle right-click normally
-                // If it within one tile randius vs the player
-                bool isMouseWithinRadiusOfPlayer = Utility.withinRadiusOfPlayer((int)position_Destination.X, (int)position_Destination.Y, 1, Game1.player);
+                    // We also let the game to handle right-click normally
+                    // If it within one tile randius vs the player
+                    bool isMouseWithinRadiusOfPlayer = Utility.withinRadiusOfPlayer((int)position_Destination.X, (int)position_Destination.Y, 1, Game1.player);
 
-                if (!isMouseWithinRadiusOfPlayer)
-                {
-                    if (ModEntry.isDebugVerbose)
-                        this.Monitor.Log(String.Format("Mouse target is outside hitbox range, at {0} and have {1} distance from player", position_Destination, vector_PlayerToMouse.Length()), LogLevel.Trace);
+                    if (!isMouseWithinRadiusOfPlayer)
+                    {
+                        if (ModEntry.isDebugVerbose)
+                            this.Monitor.Log(String.Format("Mouse target is outside hitbox range, at {0} and have {1} distance from player", position_Destination, vector_PlayerToMouse.Length()), LogLevel.Trace);
 
-                    if (ModEntry.isDebugVerbose)
-                        this.Monitor.Log("updateTarget for action handler", LogLevel.Trace);
-                    this.actionHandler.updateTarget(ModEntry.position_Destination);
-                    // We first will suppress that be havior by disable the right-click
-                    // input
-                    Helper.Input.Suppress(e.Button);
+                        if (ModEntry.isDebugVerbose)
+                            this.Monitor.Log("updateTarget for action handler", LogLevel.Trace);
+                        this.actionHandler.updateTarget(ModEntry.position_Destination);
+                        // We first will suppress that be havior by disable the right-click
+                        // input
+                        Helper.Input.Suppress(e.Button);
+                    }
                 }
 
                 return;
