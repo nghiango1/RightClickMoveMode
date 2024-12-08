@@ -279,12 +279,16 @@ namespace MouseMoveMode
 
             if (isTryToDoActionAtClickedTitle == 4 && Utility.tileWithinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 1, Game1.player) && targetTerrainFeatures != null && targetTerrainFeatures.performUseAction(grabTile))
             {
+                if (this.isVerbose)
+                    ModEntry.getMonitor().Log(String.Format("Got TerrainFeatures type: {0}, we do special handling at grapTile: {1}", targetTerrainFeatures, grabTile));
                 isTryToDoActionAtClickedTitle = 0;
                 return true;
             }
 
             if (isTryToDoActionAtClickedTitle == 4 && Utility.tileWithinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 1, Game1.player) && targetLargeTerrainFeatures != null && targetLargeTerrainFeatures.performUseAction(grabTile))
             {
+                if (this.isVerbose)
+                    ModEntry.getMonitor().Log(String.Format("Got LargeTerrainFeatures type: {0}, we do special handling at grapTile: {1}", targetLargeTerrainFeatures, grabTile));
                 isTryToDoActionAtClickedTitle = 0;
                 return true;
             }
@@ -293,6 +297,8 @@ namespace MouseMoveMode
             {
                 if (targetBuilding.doAction(grabTile, Game1.player))
                 {
+                    if (this.isVerbose)
+                        ModEntry.getMonitor().Log(String.Format("Got Building type: {0}, we do special handling at grapTile: {1}", targetBuilding, grabTile));
                     isTryToDoActionAtClickedTitle = 0;
                     return true;
                 }
@@ -322,10 +328,18 @@ namespace MouseMoveMode
                 }
             }
 
-            if (isTryToDoActionAtClickedTitle == 4 && Utility.tileWithinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 1, Game1.player) && Game1.tryToCheckAt(grabTile, Game1.player))
+            if (isTryToDoActionAtClickedTitle == 4 && Utility.tileWithinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 1, Game1.player))
             {
-                if (this.isVerbose)
-                    ModEntry.getMonitor().Log(String.Format("Just checked at {0}", grabTile), LogLevel.Trace);
+                if (Game1.tryToCheckAt(grabTile, Game1.player))
+                {
+                    if (this.isVerbose)
+                        ModEntry.getMonitor().Log(String.Format("Just checked at {0}", grabTile), LogLevel.Trace);
+                }
+                else
+                {
+                    if (this.isVerbose)
+                        ModEntry.getMonitor().Log(String.Format("Just failed checked at {0}", grabTile), LogLevel.Trace);
+                }
                 isTryToDoActionAtClickedTitle = 0;
                 return true;
             }
@@ -366,6 +380,7 @@ namespace MouseMoveMode
             targetObject = null;
             targetBuilding = null;
             targetTerrainFeatures = null;
+            targetLargeTerrainFeatures = null;
             targetShippingBin = null;
             actionToolIndex = -1;
 
