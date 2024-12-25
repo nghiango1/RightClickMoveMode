@@ -15,134 +15,7 @@ namespace MouseMoveMode
         public string toString();
     }
 
-    class ActionHandlerNew : IActionHandler
-    {
-        public Vector2 target;
-        public NPC targetNPC = null;
-
-        public bool isActionableAtDesinationTile = false;
-        public bool isDone = false;
-
-        public void debugDoAction(Vector2 target)
-        {
-            updateTarget(target);
-            ModEntry.getMonitor().Log(String.Format("Try do action at tile {0}", Util.toTile(target)), LogLevel.Info);
-            ModEntry.getMonitor().Log(String.Format("Full context: {0}", this.toString()), LogLevel.Trace);
-            tryDoAction();
-
-            if (!this.isActionableAtDesinationTile)
-                return;
-            DecompiliedGame1.pressActionButtonMod(Util.toTile(target), forceNonDirectedTile: true);
-            this.isActionableAtDesinationTile = false;
-            cancelAction();
-        }
-
-        public void cancelAction()
-        {
-            this.isActionableAtDesinationTile = false;
-        }
-
-        public void updateTarget(Vector2 target)
-        {
-            this.target = target;
-            this.targetNPC = Game1.player.currentLocation.isCharacterAtTile(Util.toTile(target));
-        }
-
-        public bool tryDoAction()
-        {
-            if (!this.isActionableAtDesinationTile)
-                return false;
-
-            // Do action
-            var grabTile = Util.toTile(this.target);
-            // Maybe we need dismount right
-            if (Game1.player.isRidingHorse())
-            {
-                ModEntry.getMonitor().VerboseLog(String.Format("Try do as riding horse", Util.toTile(target)));
-                if (Utility.tileWithinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 2, Game1.player))
-                    Game1.player.mount.dismount();
-            }
-
-            // Try to check grap tile when player is close enough
-            if (Utility.tileWithinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 1, Game1.player))
-            {
-                ModEntry.getMonitor().VerboseLog(String.Format("Try do as within range", Util.toTile(target)));
-                TryToCheckGrapTile();
-            }
-
-            return false;
-        }
-
-        public void TryToCheckGrapTile()
-        {
-            var grabTile = this.target;
-            // This overide all other action interaction
-            if (this.targetNPC is not null)
-            {
-                if (ModEntry.isDebugVerbose)
-                    ModEntry.getMonitor().Log(String.Format("Try check NPC {0} at tile {1}", this.targetNPC, grabTile), LogLevel.Info);
-                // This updating grabTile as NPC could already moved
-                grabTile = this.targetNPC.Tile;
-                bool isNPCChecked = Game1.player.currentLocation.checkAction(new xTile.Dimensions.Location((int)grabTile.X, (int)grabTile.Y), Game1.viewport, Game1.player);
-                if (isNPCChecked)
-                {
-                    if (ModEntry.isDebugVerbose)
-                        ModEntry.getMonitor().Log(String.Format("Success check NPC {0} at tile {1}", this.targetNPC, grabTile), LogLevel.Info);
-                    this.isActionableAtDesinationTile = false;
-                }
-                // This overide all other behavior
-                return;
-            }
-
-            // Try to place the item next, It have higher piority
-            if (Game1.player.ActiveObject is not null)
-                if (isActionableAtDesinationTile && Game1.player.ActiveObject.isPlaceable() && Game1.player.currentLocation.CanItemBePlacedHere(grabTile))
-                {
-                    if (ModEntry.isDebugVerbose)
-                        ModEntry.getMonitor().Log(String.Format("Try placing item at tile {0}", grabTile), LogLevel.Info);
-                    var isPlaced = Utility.tryToPlaceItem(Game1.player.currentLocation, Game1.player.ActiveObject, (int)grabTile.X * 64, (int)grabTile.Y * 64);
-                    if (isPlaced)
-                    {
-                        if (ModEntry.isDebugVerbose)
-                            ModEntry.getMonitor().Log(String.Format("Success placing item at tile {0}", grabTile), LogLevel.Info);
-                        this.isActionableAtDesinationTile = false;
-                        return;
-                    }
-                }
-
-            var gl = Game1.player.currentLocation;
-            var funiture = gl.GetFurnitureAt(grabTile);
-            if (funiture is not null)
-            {
-                if (funiture.isActionable(Game1.player))
-                {
-                    var isFunitureChecked = funiture.checkForAction(Game1.player);
-                    if (isFunitureChecked)
-                    {
-                        if (ModEntry.isDebugVerbose)
-                            ModEntry.getMonitor().Log(String.Format("Success checked funiture at tile {0}", grabTile), LogLevel.Info);
-                        this.isActionableAtDesinationTile = false;
-                        return;
-                    }
-                }
-            }
-
-            var isChecked = !DecompiliedGame1.pressActionButtonMod(grabTile);
-            if (isChecked)
-            {
-                if (ModEntry.isDebugVerbose)
-                    ModEntry.getMonitor().Log(String.Format("Success checked item at tile {0}", grabTile), LogLevel.Info);
-                this.isActionableAtDesinationTile = false;
-            }
-        }
-
-        public string toString()
-        {
-            throw new NotImplementedException();
-        }
-    }
-
-    class ActionHandlerOld : IActionHandler
+    class ActionHandler : IActionHandler
     {
         public bool isVerbose = false;
         public Vector2 target;
@@ -155,7 +28,7 @@ namespace MouseMoveMode
         StardewValley.TerrainFeatures.LargeTerrainFeature targetLargeTerrainFeatures = null;
         public int isTryToDoActionAtClickedTitle = 0;
 
-        public ActionHandlerOld(bool isVerbose = false)
+        public ActionHandler(bool isVerbose = false)
         {
             this.isVerbose = isVerbose;
         }
@@ -246,6 +119,12 @@ namespace MouseMoveMode
                         }
                     }
                 }
+
+                if (this.isVerbose)
+                    ModEntry.getMonitor().Log(String.Format("Got Special object that return false when try to check!"));
+                isTryToDoActionAtClickedTitle = 0;
+                //isMovingAutomaticaly = false;
+                return true;
             }
 
             if ((isTryToDoActionAtClickedTitle == 2 || isTryToDoActionAtClickedTitle == 3) && (Game1.player.CurrentToolIndex != actionToolIndex))

@@ -46,7 +46,6 @@ namespace MouseMoveMode
         public static bool isHoldingRunButton = false;
 
         public static NPC pointedNPC = null;
-        public IActionHandler actionHandler = new ActionHandlerOld();
 
         private static Vector2 vector_PlayerToMouse;
         private static Vector2 vector_AutoMove;
@@ -60,6 +59,7 @@ namespace MouseMoveMode
         private static PathFindingHelper pathFindingHelper;
 
         public static bool isDebugVerbose = false;
+        public IActionHandler actionHandler = new ActionHandler(isDebugVerbose);
 
         /*********
         ** Public methods
