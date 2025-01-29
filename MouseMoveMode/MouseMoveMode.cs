@@ -277,7 +277,7 @@ namespace MouseMoveMode
             else
             {
                 // Update destination realtime when we try to reach an NPC (who is moving) 
-                if (pointedNPC != null)
+                if (pointedNPC != null && pointedNPC.currentLocation == Game1.player.currentLocation)
                 {
                     position_Destination = pointedNPC.getStandingPosition();
                     // This reducing the need to findPath on every tick, which could make player stuck in one place
