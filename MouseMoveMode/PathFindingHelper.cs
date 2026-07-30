@@ -355,6 +355,12 @@ namespace MouseMoveMode
             {
                 limit -= 1;
                 var current = pq.Dequeue();
+
+                if (visited.Contains(current))
+                    continue;
+                visited.Add(current);
+                this.visitedNodes.Add(new DrawableNode(Util.toBoxPosition(current)));
+
                 if (debugVerbose)
                 {
                     ModEntry.getMonitor().Log(String.Format("[Step {2}] Current {3} or in tile {0} = {1} fScore {4}", current, gScore[current], 100 - limit, addPadding(current), fScore[current]), LogLevel.Info);
@@ -374,10 +380,10 @@ namespace MouseMoveMode
                     for (int j = -1; j <= 1; j += 1)
                     {
                         Vector2 neighbor = new Vector2(current.X + i, current.Y + j);
+
                         if (visited.Contains(neighbor))
-                        {
                             continue;
-                        }
+
                         if (isValidMovement(current, neighbor))
                         {
                             // Pass all checked, this tile could be consider to be use
@@ -387,8 +393,6 @@ namespace MouseMoveMode
 
                 foreach (var neighbor in neighborList)
                 {
-                    visited.Add(neighbor);
-                    this.visitedNodes.Add(new DrawableNode(Util.toBoxPosition(neighbor)));
 
                     var temp = gScore[current] + calculateGScore(Util.toPosition(current), Util.toPosition(neighbor));
                     if (gScore.ContainsKey(neighbor))

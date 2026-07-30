@@ -169,6 +169,20 @@ namespace MouseMoveMode
                 }
             }
 
+            foreach (StardewValley.TerrainFeatures.ResourceClump resourceClump in gl.resourceClumps)
+            {
+                if (!resourceClump.isPassable() &&
+                    resourceClump.getBoundingBox().Contains((int)tile.X * 64 + 32, (int)tile.Y * 64 + 32))
+                {
+                    if (Util.debugPassableVebose)
+                        ModEntry.getMonitor().Log("Found unpassable(?) resource clump " + resourceClump + " at " + tile, LogLevel.Info);
+                    cacheCantPassable.Add(tile);
+                    if (Util.debugPassable)
+                        nonPassableNodes.Add(new DrawableNode(Util.toBoxPosition(tile)));
+                    return false;
+                }
+            }
+
             if (gl.Objects.ContainsKey(tile))
             {
                 var item = gl.Objects[tile];
